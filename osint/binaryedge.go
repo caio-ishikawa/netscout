@@ -19,11 +19,7 @@ type BinaryEdgeClient struct {
 }
 
 type BinaryEdgeSubdomains struct {
-	Query    string   `json:"query"`
-	Page     int      `json:"page"`
-	Pagesize int      `json:"page_size"`
-	Total    int      `json:"total"`
-	Events   []string `json:"events"`
+	Subdomains []string `json:"events"`
 }
 
 func NewBinaryEdgeClient(apiKey string) BinaryEdgeClient {
