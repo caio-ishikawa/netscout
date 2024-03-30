@@ -1,21 +1,17 @@
-# Mimir
+# NetScout
 
-*"Norse deity known for his wisdom and knowledge of the past, present, and future."*
+NetScout is an OSINT tool that finds domains, subdomains, directories, endpoints and files.
 
-## Example usage:
-- mimir -t present -u http://test.com -d 3 --graph
-  - Crawls URL with depth declared from -d flag
-  - Outputs single tree graph representing the crawl
 
-- mimir -t past -u http://test.com -d 3 --graph
-  - Attempts to find URL in WaybackMachine, and crawls with depth declared from -d flag
-  - Outputs one tree diagram representing the crawl
+## Examples 
+```sh
+netscout -u https://crawler-test -d 2 -o netscout.txt
+```
 
-## Components:
-- Crawler (Golang): Crawls websites given a depth parameter. If --graph flag is set, it will output a json containing the URL map.
-- Visualizer (JS): If --graph flag is set, it will fetch the json output and create an HTML doc containing an interactive tree.
+```sh
+netscout -u https://crawler-test.com -d 2 --skip-binaryedge --skip-google-dork -o netscout.txt
+```
 
-## Ideas
-- BinaryEdge integration
-- SecurityTrails integration
-
+```sh
+netscout -u https://crawler-test.com -d 2 -t 5 --delay 1000 -o netscout.txt
+```

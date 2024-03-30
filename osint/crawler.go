@@ -5,8 +5,8 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/caio-ishikawa/mimir/shared"
-	"golang.org/x/net/html" //"github.com/chromedp/chromedp"
+	"github.com/caio-ishikawa/netscout/shared"
+	"golang.org/x/net/html"
 )
 
 const CRAWLER_NAME = "CRAWLER"

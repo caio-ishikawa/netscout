@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/caio-ishikawa/mimir/osint"
-	"github.com/caio-ishikawa/mimir/shared"
+	"github.com/caio-ishikawa/netscout/osint"
+	"github.com/caio-ishikawa/netscout/shared"
 )
 
 const (
@@ -21,64 +21,64 @@ const (
 	reset  = "\033[0m"
 )
 
-type MimirApp struct {
+type NetScout struct {
 	outputFile *os.File
 	settings   Settings
 	Extensions []string
 }
 
-func NewApp(settings Settings) (MimirApp, error) {
-	return MimirApp{
+func NewApp(settings Settings) (NetScout, error) {
+	return NetScout{
 		outputFile: nil,
 		settings:   settings,
 		Extensions: []string{},
 	}, nil
 }
 
-func (mimir *MimirApp) Start() {
-	if mimir.settings.Output != "" {
-		mimir.createOutputFile(mimir.settings.Output)
+func (ns *NetScout) Start() {
+	if ns.settings.Output != "" {
+		ns.createOutputFile(ns.settings.Output)
 	}
 
-	subdomains, err := mimir.getBinaryEdgeSubdomains()
+	subdomains, err := ns.getBinaryEdgeSubdomains()
 	if err != nil {
-		mimir.displayWarning(err.Error())
+		ns.displayWarning(err.Error())
 	}
 
 	for _, subdomain := range subdomains {
-		mimir.displayMsg(subdomain.String())
+		ns.displayMsg(subdomain.String())
 	}
 
 	// crawling happens concurrently, and it updates the state as it finds URLs
-	toCrawl := append(subdomains, mimir.settings.SeedUrl)
-	mimir.crawl(true, toCrawl)
+	toCrawl := append(subdomains, ns.settings.SeedUrl)
+	ns.crawl(true, toCrawl)
 
-	filetypeLinks, err := mimir.getFiletypeResults()
+	filetypeLinks, err := ns.getFiletypeResults()
 	if err != nil {
-		mimir.displayWarning(err.Error())
+		ns.displayWarning(err.Error())
 	}
 
 	for _, found := range filetypeLinks.OrganicResults {
-		mimir.displayMsg(found.Link)
+		ns.displayMsg(found.Link)
 	}
 }
 
-func (mimir *MimirApp) createOutputFile(name string) {
+func (ns *NetScout) createOutputFile(name string) {
 	file, err := os.Create(name)
 	if err != nil {
-		mimir.displayError("failed to create output file - proceeding with scan")
+		ns.displayError("failed to create output file - proceeding with scan")
 		return
 	}
 
-	mimir.outputFile = file
+	ns.outputFile = file
 }
 
-func (mimir *MimirApp) getBinaryEdgeSubdomains() ([]url.URL, error) {
-	if mimir.settings.SkipBinaryEdge {
+func (ns *NetScout) getBinaryEdgeSubdomains() ([]url.URL, error) {
+	if ns.settings.SkipBinaryEdge {
 		return []url.URL{}, fmt.Errorf("skipping BinaryEdge subdomain search")
 	}
-	client := osint.NewBinaryEdgeClient(mimir.settings.BinaryEdgeApiKey)
-	res, err := client.QuerySubdomains(mimir.settings.SeedUrl)
+	client := osint.NewBinaryEdgeClient(ns.settings.BinaryEdgeApiKey)
+	res, err := client.QuerySubdomains(ns.settings.SeedUrl)
 	if err != nil {
 		return []url.URL{}, err
 	}
@@ -87,16 +87,16 @@ func (mimir *MimirApp) getBinaryEdgeSubdomains() ([]url.URL, error) {
 	for _, subdomain := range res.Subdomains {
 		u, err := url.Parse(subdomain)
 		if err != nil {
-			mimir.displayWarning(err.Error())
+			ns.displayWarning(err.Error())
 			continue
 		}
 
 		// normalize
 		if u.Scheme == "" {
-			u.Scheme = mimir.settings.SeedUrl.Scheme
+			u.Scheme = ns.settings.SeedUrl.Scheme
 		}
 
-		if u.String() == mimir.settings.SeedUrl.String() {
+		if u.String() == ns.settings.SeedUrl.String() {
 			continue
 		}
 
@@ -106,46 +106,46 @@ func (mimir *MimirApp) getBinaryEdgeSubdomains() ([]url.URL, error) {
 	return output, nil
 }
 
-func (mimir *MimirApp) crawl(lockHost bool, toCrawl []url.URL) {
-	mimir.displaySuccess("Starting crawl")
+func (ns *NetScout) crawl(lockHost bool, toCrawl []url.URL) {
+	ns.displaySuccess("Starting crawl")
 
 	comms := shared.NewCommsChannels()
 
 	crawler := osint.NewCrawler(
 		lockHost,
-		mimir.settings.SeedUrl,
+		ns.settings.SeedUrl,
 		toCrawl,
-		mimir.settings.Depth,
+		ns.settings.Depth,
 		comms,
 	)
 
 	go crawler.Crawl(0)
 
-	mimir.handleComms(
+	ns.handleComms(
 		comms.DataChan,
 		comms.WarningChan,
 		comms.DoneChan,
 	)
 }
 
-func (mimir *MimirApp) getFiletypeResults() (osint.GoogleResults, error) {
-	if mimir.settings.SkipGoogleDork {
+func (ns *NetScout) getFiletypeResults() (osint.GoogleResults, error) {
+	if ns.settings.SkipGoogleDork {
 		return osint.GoogleResults{}, fmt.Errorf("skipping Goole dork")
 	}
 
 	scanMsg := "Scanning for"
-	for _, ext := range mimir.Extensions {
+	for _, ext := range ns.Extensions {
 		scanMsg = scanMsg + " " + ext
 	}
 
-	mimir.displaySuccess(scanMsg)
+	ns.displaySuccess(scanMsg)
 
-	serpClient, err := osint.NewSerpClient(mimir.settings.SerpApiKey)
+	serpClient, err := osint.NewSerpClient(ns.settings.SerpApiKey)
 	if err != nil {
 		return osint.GoogleResults{}, err
 	}
 
-	queryStr := osint.GenerateFiletypeQuery(mimir.settings.SeedUrl, mimir.Extensions)
+	queryStr := osint.GenerateFiletypeQuery(ns.settings.SeedUrl, ns.Extensions)
 	results, err := serpClient.SearchGoogle(queryStr)
 	if err != nil {
 		return osint.GoogleResults{}, nil
@@ -155,7 +155,7 @@ func (mimir *MimirApp) getFiletypeResults() (osint.GoogleResults, error) {
 }
 
 // handles the consumption of incoming messages until process is done.
-func (mimir *MimirApp) handleComms(
+func (ns *NetScout) handleComms(
 	dataChan chan shared.ScannedItem,
 	warningChan chan string,
 	doneChan chan struct{},
@@ -164,18 +164,18 @@ func (mimir *MimirApp) handleComms(
 	for {
 		select {
 		case msg := <-dataChan:
-			if mimir.settings.Output != "" {
-				mimir.outputFile.Write([]byte(msg.Url.String() + "\n"))
+			if ns.settings.Output != "" {
+				ns.outputFile.Write([]byte(msg.Url.String() + "\n"))
 			}
-			if !mimir.settings.Verbose && msg.Relevance == shared.Low {
+			if !ns.settings.Verbose && msg.Relevance == shared.Low {
 				continue
 			}
 
 			wg.Add(1)
-			go mimir.CollectFiletypes(msg.Url, &wg)
-			mimir.displayMsg(msg.Url.String())
+			go ns.CollectFiletypes(msg.Url, &wg)
+			ns.displayMsg(msg.Url.String())
 		case msg := <-warningChan:
-			mimir.displayWarning(msg)
+			ns.displayWarning(msg)
 		case <-doneChan:
 			wg.Wait()
 			return
@@ -185,49 +185,49 @@ func (mimir *MimirApp) handleComms(
 	}
 }
 
-func (mimir *MimirApp) CollectFiletypes(url url.URL, wg *sync.WaitGroup) {
+func (ns *NetScout) CollectFiletypes(url url.URL, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	path := url.Path
 	pathComponents := strings.Split(path, "/")
 	for _, component := range pathComponents {
-		mimir.updateExtensions(component, url)
+		ns.updateExtensions(component, url)
 	}
 
 	params := url.Query()
 	for _, values := range params {
 		for _, value := range values {
-			mimir.updateExtensions(value, url)
+			ns.updateExtensions(value, url)
 		}
 	}
 }
 
-func (mimir *MimirApp) updateExtensions(file string, url url.URL) {
+func (ns *NetScout) updateExtensions(file string, url url.URL) {
 	ext := filepath.Ext(file)
 	if ext == "" || ext == "." {
 		return
 	}
 
 	extension := strings.TrimLeft(ext, ".")
-	exists := shared.SliceContains(mimir.Extensions, ext)
+	exists := shared.SliceContains(ns.Extensions, ext)
 
 	if !exists {
-		mimir.Extensions = append(mimir.Extensions, extension)
+		ns.Extensions = append(ns.Extensions, extension)
 	}
 }
 
-func (mimir *MimirApp) displayMsg(item string) {
+func (ns *NetScout) displayMsg(item string) {
 	fmt.Printf("%s[x]%s %s\n", green, reset, item)
 }
 
-func (mimir *MimirApp) displaySuccess(text string) {
+func (ns *NetScout) displaySuccess(text string) {
 	fmt.Printf("%s[x] %s%s\n", green, text, reset)
 }
 
-func (mimir *MimirApp) displayWarning(text string) {
+func (ns *NetScout) displayWarning(text string) {
 	fmt.Printf("%s[x] WARN: %s%s\n", yellow, text, reset)
 }
 
-func (mimir *MimirApp) displayError(text string) {
+func (ns *NetScout) displayError(text string) {
 	fmt.Printf("%s[x] ERR: %s%s\n", red, text, reset)
 }

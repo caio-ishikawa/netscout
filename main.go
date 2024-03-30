@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/caio-ishikawa/mimir/app"
+	"github.com/caio-ishikawa/netscout/app"
 )
 
 const logo = `
