@@ -1,52 +1,52 @@
 package osint
 
 import (
-	"io"
 	"net/http"
 	"net/url"
 	"strings"
 
 	"github.com/caio-ishikawa/mimir/shared"
-	"golang.org/x/net/html"
+	"golang.org/x/net/html" //"github.com/chromedp/chromedp"
 )
 
 // Errors
 const (
-	requestWarning   = "Could not make request to server."
-	htmlParseWarning = "Could not parse response."
-	pathParseWarning = "Could not parse found URL."
+	requestWarning   = "Could not make request to server"
+	htmlParseWarning = "Could not parse response"
+	pathParseWarning = "Could not parse found URL"
+	htmlGetWarning   = "Could not get HTML for page"
 )
 
 const CRAWLER_NAME = "CRAWLER"
 
 type Crawler struct {
-	seedUrl     url.URL
-	maxDepth    int
-	toCrawl     []url.URL
-	urlMap      map[string]url.URL
-	DataChan    chan shared.ScannedItem
-	UpdateChan  chan string
-	WarningChan chan string
-	DoneChan    chan struct{}
+	headless   bool
+	lockHost   bool
+	seedUrl    url.URL
+	targetHost string
+	maxDepth   int
+	toCrawl    []url.URL
+	urlMap     map[string]url.URL
+	comms      shared.CommsChannels
 }
 
 func NewCrawler(
+	headless bool,
+	lockHost bool,
 	seedUrl url.URL,
+	host string,
 	maxDepth int,
-	dataChan chan shared.ScannedItem,
-	updateChan chan string,
-	warningChan chan string,
-	doneChan chan struct{},
+	comms shared.CommsChannels,
 ) Crawler {
 	return Crawler{
-		seedUrl:     seedUrl,
-		maxDepth:    maxDepth,
-		toCrawl:     []url.URL{},
-		urlMap:      map[string]url.URL{},
-		DataChan:    dataChan,
-		UpdateChan:  updateChan,
-		WarningChan: warningChan,
-		DoneChan:    doneChan,
+		headless:   headless,
+		lockHost:   lockHost,
+		seedUrl:    seedUrl,
+		targetHost: host,
+		maxDepth:   maxDepth,
+		toCrawl:    []url.URL{},
+		urlMap:     map[string]url.URL{},
+		comms:      comms,
 	}
 }
 
@@ -55,13 +55,8 @@ func (crawler *Crawler) Crawl(currDepth int) {
 		crawler.toCrawl = []url.URL{crawler.seedUrl}
 	}
 
-	if len(crawler.toCrawl) == 0 {
-		close(crawler.DoneChan)
-		return
-	}
-
-	if currDepth == crawler.maxDepth {
-		close(crawler.DoneChan)
+	if len(crawler.toCrawl) == 0 || currDepth == crawler.maxDepth {
+		close(crawler.comms.DoneChan)
 		return
 	}
 
@@ -69,43 +64,49 @@ func (crawler *Crawler) Crawl(currDepth int) {
 	crawler.toCrawl = []url.URL{}
 
 	for i := range toCrawl {
-		// keeps it from crawling out-of-scope websites
-		if toCrawl[i].Host != crawler.seedUrl.Host {
-			continue
-		}
+		crawler.comms.UpdateChan <- toCrawl[i].String() // udpate spinner
 
-		crawler.UpdateChan <- toCrawl[i].String()
-
-		resp, err := http.Get(toCrawl[i].String())
+		htmlNode, err := crawler.getHtmlContent(toCrawl[i])
 		if err != nil {
-			crawler.UpdateChan <- requestWarning
+			crawler.comms.WarningChan <- htmlGetWarning
 			continue
 		}
-		defer resp.Body.Close()
 
-		crawler.getLinks(resp.Body, toCrawl[i])
+		crawler.traverseHtml(htmlNode, toCrawl[i])
 	}
 
 	crawler.Crawl(currDepth + 1)
 }
 
-func (crawler *Crawler) getLinks(doc io.ReadCloser, seedUrl url.URL) {
-	htmlDoc, err := html.Parse(doc)
+func (crawler *Crawler) getHtmlContent(url url.URL) (*html.Node, error) {
+	req, err := generateRequest(url)
 	if err != nil {
-		crawler.WarningChan <- htmlParseWarning
-		return
+		return nil, err
 	}
 
-	crawler.traverseHtml(htmlDoc, seedUrl)
+	client := http.DefaultClient
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	htmlDoc, err := html.Parse(resp.Body)
+	if err != nil {
+		crawler.comms.WarningChan <- htmlParseWarning
+		return nil, err
+	}
+
+	return htmlDoc, nil
 }
 
-// Gets URLs of a page recursively and returns it.
-// does not return the urls from parent
+// Gets URLs of a page recursively and propagates it via comms.DataChan
 func (crawler *Crawler) traverseHtml(node *html.Node, currUrl url.URL) {
-	if node.Type == html.ElementNode && (node.Data == "a" || node.Data == "img") {
+	if node.Type == html.ElementNode && node.Data == "a" {
 		for _, attr := range node.Attr {
 			if attr.Key == "href" || attr.Key == "src" {
-				crawler.propagateScannedItem(attr.Val, currUrl.Host, currUrl.Scheme)
+				crawler.propagateUrl(attr.Val, currUrl.Host, currUrl.Scheme)
 			}
 		}
 	}
@@ -114,11 +115,15 @@ func (crawler *Crawler) traverseHtml(node *html.Node, currUrl url.URL) {
 	}
 }
 
-// creates scannedItem based on scanned URL
-func (crawler *Crawler) propagateScannedItem(urlStr, host, scheme string) {
+// creates scannedItem based on scanned URL and sends it via comms.DataChan
+func (crawler *Crawler) propagateUrl(urlStr, host, scheme string) {
 	url, err := parsePath(urlStr, host, scheme)
 	if err != nil {
-		crawler.WarningChan <- pathParseWarning
+		crawler.comms.WarningChan <- pathParseWarning
+		return
+	}
+
+	if crawler.lockHost && url.Host != crawler.targetHost {
 		return
 	}
 
@@ -129,7 +134,7 @@ func (crawler *Crawler) propagateScannedItem(urlStr, host, scheme string) {
 
 		scanned := crawler.analyzeUrl(url)
 
-		crawler.DataChan <- scanned
+		crawler.comms.DataChan <- scanned
 	}
 }
 
@@ -163,5 +168,4 @@ func (crawler *Crawler) analyzeUrl(url url.URL) shared.ScannedItem {
 		Relevance: relevance,
 		Source:    shared.Crawler,
 	}
-
 }

@@ -3,6 +3,7 @@ package osint
 import (
 	"bufio"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"strings"
@@ -12,10 +13,7 @@ import (
 	"github.com/theckman/yacspin"
 )
 
-const (
-	bold  = "\033[1m"
-	reset = "\033[0m"
-)
+const CHROME_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
 
 func removeScheme(targetUrl url.URL) string {
 	scheme := targetUrl.Scheme + "://"
@@ -59,7 +57,9 @@ func parsePath(urlStr string, host string, scheme string) (url.URL, error) {
 }
 
 func createSpinner(suffix string) yacspin.Spinner {
-	// Set up for crawler by default, since it's the first step
+	bold := "\033[1m"
+	reset := "\033[0m"
+
 	cfg := yacspin.Config{
 		Frequency:     100 * time.Millisecond,
 		CharSet:       yacspin.CharSets[39],
@@ -72,4 +72,15 @@ func createSpinner(suffix string) yacspin.Spinner {
 	spinner, _ := yacspin.New(cfg)
 
 	return *spinner
+}
+
+func generateRequest(url url.URL) (*http.Request, error) {
+	req, err := http.NewRequest(http.MethodGet, url.String(), nil)
+	if err != nil {
+		return &http.Request{}, err
+	}
+
+	req.Header.Set("User-Agent", CHROME_USER_AGENT)
+
+	return req, nil
 }

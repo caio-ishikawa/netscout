@@ -23,34 +23,13 @@ const (
 )
 
 type MimirApp struct {
-	binaryEdge osint.BinaryEdgeClient
-	crawler    osint.Crawler
 	spinner    yacspin.Spinner
 	outputFile *os.File
 	settings   Settings
-	Extensions map[string]interface{}
+	Extensions []string
 }
 
 func NewApp(settings Settings) (MimirApp, error) {
-	var binaryEdge osint.BinaryEdgeClient
-	if settings.BinaryEdgeApiKey != "" {
-		binaryEdge = osint.NewBinaryEdgeClient(settings.BinaryEdgeApiKey)
-	}
-
-	dataChan := make(chan shared.ScannedItem)
-	updateChan := make(chan string)
-	warningChan := make(chan string)
-	doneChan := make(chan struct{})
-
-	crawler := osint.NewCrawler(
-		settings.SeedUrl,
-		settings.Depth,
-		dataChan,
-		updateChan,
-		warningChan,
-		doneChan,
-	)
-
 	cfg := yacspin.Config{
 		Frequency:       100 * time.Millisecond,
 		CharSet:         yacspin.CharSets[69],
@@ -67,12 +46,10 @@ func NewApp(settings Settings) (MimirApp, error) {
 	}
 
 	return MimirApp{
-		binaryEdge: binaryEdge,
-		crawler:    crawler,
 		spinner:    *spinner,
 		outputFile: nil,
 		settings:   settings,
-		Extensions: make(map[string]interface{}),
+		Extensions: []string{},
 	}, nil
 }
 
@@ -81,7 +58,30 @@ func (mimir *MimirApp) Start() {
 		mimir.createOutputFile()
 	}
 
-	mimir.crawl()
+	// 1- binaryedge subdomain scan && add domains to list
+	// 1- (MAYBE) wayback machine scan for subdomains?
+	// 2- crawl seed URL + any found subdomains && save file extensions
+	// 3- use serp api to try and find files on google
+
+	mimir.crawl(
+		false,                  // headless mode
+		true,                   // lockHost (only crawls url with host that matches target host)
+		mimir.settings.SeedUrl, // target url
+		mimir.settings.Depth,
+	)
+
+	mimir.displayCrawlerResults()
+
+	serpClient, err := osint.NewSerpClient(mimir.settings.SerpApiKey)
+	if err != nil {
+		return
+	}
+
+	queryStr := osint.GenerateFiletypeQuery(mimir.settings.SeedUrl, mimir.Extensions)
+	results, err := serpClient.SearchGoogle(queryStr)
+	for _, i := range results.OrganicResults {
+		mimir.displayMsg(i.Link)
+	}
 }
 
 func (mimir *MimirApp) createOutputFile() {
@@ -94,55 +94,50 @@ func (mimir *MimirApp) createOutputFile() {
 	mimir.outputFile = file
 }
 
-// Method responsible for managing all BinaryEdge requests for a scan.
-func (mimir *MimirApp) queryBinaryEdge() {
-	subdomains, err := mimir.binaryEdge.QuerySubdomains(mimir.settings.SeedUrl)
-	if err != nil {
-		mimir.displayWarning("error making request to BinaryEdge")
-		return
-	}
+func (mimir *MimirApp) crawl(headless bool, lockHost bool, seedUrl url.URL, depth int) {
+	comms := shared.NewCommsChannels()
 
-	if len(subdomains.Events) == 0 {
-		mimir.displayWarning("no subdomains found on BinaryEdge")
-		return
-	}
+	crawler := osint.NewCrawler(
+		headless,
+		lockHost,
+		seedUrl,
+		mimir.settings.SeedUrl.Host,
+		depth,
+		comms,
+	)
 
-	mimir.displaySucess("BinaryEdge Subdomains:")
-	for i := range subdomains.Events {
-		mimir.displayWarning(subdomains.Events[i])
-	}
-}
+	mimir.displayWarning("crawling")
 
-func (mimir *MimirApp) crawl() {
 	go mimir.spinner.Start()
 
-	go mimir.crawler.Crawl(0)
+	go crawler.Crawl(0)
 
-	mimir.handleOperation(
-		mimir.crawler.DataChan,
-		mimir.crawler.UpdateChan,
-		mimir.crawler.WarningChan,
-		mimir.crawler.DoneChan,
+	mimir.handleComms(
+		comms.DataChan,
+		comms.UpdateChan,
+		comms.WarningChan,
+		comms.DoneChan,
 	)
 
 	mimir.spinner.Suffix(" Crawled")
-	mimir.spinner.Stop()
 
-	// Output results
+	mimir.spinner.Stop()
+}
+
+func (mimir *MimirApp) displayCrawlerResults() {
 	crawlOutput := fmt.Sprintf("Found %v file extensions", len(mimir.Extensions))
 	mimir.displayMsg(crawlOutput)
 
 	scanMsg := "Scanning for"
-	for key := range mimir.Extensions {
-		scanMsg = scanMsg + " " + key
+	for _, ext := range mimir.Extensions {
+		scanMsg = scanMsg + " " + ext
 	}
 
 	mimir.displayMsg(scanMsg)
-
 }
 
 // Method responsible for consuming incoming messages until process is done.
-func (mimir *MimirApp) handleOperation(
+func (mimir *MimirApp) handleComms(
 	dataChan chan shared.ScannedItem,
 	updateChan chan string,
 	warningChan chan string,
@@ -200,12 +195,12 @@ func (mimir *MimirApp) updateExtensions(file string, url url.URL) {
 		return
 	}
 
-	_, exists := mimir.Extensions[ext]
-	if !exists {
-		extension := strings.TrimRight(ext, ".")
-		mimir.Extensions[extension] = url
-	}
+	extension := strings.TrimLeft(ext, ".")
+	exists := shared.SliceContains(mimir.Extensions, ext)
 
+	if !exists {
+		mimir.Extensions = append(mimir.Extensions, extension)
+	}
 }
 
 func (mimir *MimirApp) displayMsg(item string) {

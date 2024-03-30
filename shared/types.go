@@ -32,3 +32,19 @@ func NewScannedItem(url url.URL, relevance, source string) ScannedItem {
 		Source:    Source(source),
 	}
 }
+
+type CommsChannels struct {
+	DataChan    chan ScannedItem
+	UpdateChan  chan string
+	WarningChan chan string
+	DoneChan    chan struct{}
+}
+
+func NewCommsChannels() CommsChannels {
+	return CommsChannels{
+		DataChan:    make(chan ScannedItem),
+		UpdateChan:  make(chan string),
+		WarningChan: make(chan string),
+		DoneChan:    make(chan struct{}),
+	}
+}

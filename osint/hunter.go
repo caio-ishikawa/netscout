@@ -1,69 +1,66 @@
 package osint
 
 import (
-	"encoding/base64"
+	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 )
 
-type HunterClient struct {
-	baseUrl url.URL
+const SERP_API_URL = "https://serpapi.com/search.json"
+
+type GoogleResults struct {
+	OrganicResults []OrganicResult `json:"organic_results"`
 }
 
-func NewHunterClient(key string) (HunterClient, error) {
-	url, err := url.Parse("https://api.hunter.how/search")
-	if err != nil {
-		return HunterClient{}, nil
-	}
-
-	query := url.Query()
-	query.Set("api-key", key)
-
-	url.RawQuery = query.Encode()
-
-	return HunterClient{
-		baseUrl: *url,
-	}, nil
+type OrganicResult struct {
+	Title string `json:"title"`
+	Link  string `json:"link"`
 }
 
-func (hunter *HunterClient) DorkExtensions(targetUrl url.URL, extensions []string) error {
-	url := hunter.GenerateFiletypeUrl(targetUrl, extensions)
+type SerpClient struct {
+	url url.URL
+}
 
-	resp, err := http.Get(url.String())
+func NewSerpClient(apiKey string) (SerpClient, error) {
+	u, err := url.Parse(SERP_API_URL)
 	if err != nil {
-		return err
+		return SerpClient{}, err
 	}
 
+	query := u.Query()
+	query.Add("api_key", apiKey)
+	query.Add("engine", "google")
+	query.Add("google_domain", "google.com")
+	query.Add("gl", "us")
+	query.Add("hl", "en")
+
+	u.RawQuery = query.Encode()
+
+	return SerpClient{*u}, nil
+}
+
+func (serp *SerpClient) SearchGoogle(queryStr string) (GoogleResults, error) {
+	query := serp.url.Query()
+	query.Add("q", queryStr)
+	serp.url.RawQuery = query.Encode()
+
+	resp, err := http.Get(serp.url.String())
+	if err != nil {
+		return GoogleResults{}, err
+	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
+	var res GoogleResults
+	if err = json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		return GoogleResults{}, err
 	}
-	fmt.Println(string(body))
 
-	return nil
-}
-
-// Returns API URL for querying filetypes for a given URL
-func (hunter *HunterClient) GenerateFiletypeUrl(targetUrl url.URL, extensions []string) url.URL {
-	queryStr := hunter.generateFiletypeQuery(targetUrl, extensions)
-	encoded := base64.StdEncoding.EncodeToString([]byte(queryStr))
-
-	url := hunter.baseUrl
-
-	query := url.Query()
-	query.Set("query", encoded)
-
-	url.RawQuery = query.Encode()
-
-	return url
+	return res, nil
 }
 
 // Returns query string for searching for filetypes given a URL
-func (hunter *HunterClient) generateFiletypeQuery(targetUrl url.URL, extensions []string) string {
+func GenerateFiletypeQuery(targetUrl url.URL, extensions []string) string {
 	domain := removeScheme(targetUrl)
 	queryStr := fmt.Sprintf("site:%s ", domain)
 
@@ -77,5 +74,3 @@ func (hunter *HunterClient) generateFiletypeQuery(targetUrl url.URL, extensions 
 
 	return queryStr
 }
-
-func (hunter *HunterClient) dorkFileNames(names []string) {}

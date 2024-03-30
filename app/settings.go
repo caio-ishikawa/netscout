@@ -20,6 +20,7 @@ type Settings struct {
 	Output           bool
 	Verbose          bool
 	BinaryEdgeApiKey string
+	SerpApiKey       string
 }
 
 func ParseFlags() (Settings, error) {
@@ -44,14 +45,16 @@ func ParseFlags() (Settings, error) {
 
 	// Defaults to empty string
 	binaryEdgeApiKey := os.Getenv("BINARYEDGE_API_KEY")
+	serpApiKey := os.Getenv("SERP_API_KEY")
 
 	return Settings{
 		SeedUrl:          *parsedUrl,
 		Depth:            *depthPtr,
-		BinaryEdgeApiKey: binaryEdgeApiKey,
 		ThreadCount:      *threadCountPtr,
 		ReqDelay:         *reqDelayPtr,
 		Output:           *outputPtr,
 		Verbose:          *verbosePtr,
+		BinaryEdgeApiKey: binaryEdgeApiKey,
+		SerpApiKey:       serpApiKey,
 	}, nil
 }
