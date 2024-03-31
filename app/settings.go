@@ -15,6 +15,7 @@ const (
 type Settings struct {
 	SeedUrl          url.URL
 	Depth            int
+	LockHost         bool
 	ThreadCount      int
 	ReqDelay         int
 	Output           string
@@ -23,11 +24,13 @@ type Settings struct {
 	SerpApiKey       string
 	SkipBinaryEdge   bool
 	SkipGoogleDork   bool
+	SkipAXFR         bool
 }
 
 func ParseFlags() (Settings, error) {
 	urlPtr := flag.String("u", "", "A string representing the URL")
 	depthPtr := flag.Int("d", 0, "An integer representing the depth of the crawl")
+	lockHostPtr := flag.Bool("lock-host", false, "A boolean - if set, it will only save URLs with the same host as the seed")
 	threadCountPtr := flag.Int("t", 5, "An integer representing the amount of threads to use for the scans")
 	reqDelayPtr := flag.Int("delay", 0, "An integer representing the delay between requests in miliseconds")
 	outputPtr := flag.String("o", "", "A string representing the name of the output file")
@@ -35,6 +38,7 @@ func ParseFlags() (Settings, error) {
 
 	skipBinaryEdgePtr := flag.Bool("skip-binaryedge", false, "A bool - if set, it will skip BinaryEdge subdomain scan")
 	skipGoogleDorkPtr := flag.Bool("skip-google-dork", false, "A bool - if set, it will skip the Google filetype scan")
+	skipAXFRPtr := flag.Bool("skip-axfr", false, "A bool - if set, it will skip the DNS zone trasnfer attempt")
 
 	flag.Parse()
 
@@ -54,6 +58,7 @@ func ParseFlags() (Settings, error) {
 	return Settings{
 		SeedUrl:          *parsedUrl,
 		Depth:            *depthPtr,
+		LockHost:         *lockHostPtr,
 		ThreadCount:      *threadCountPtr,
 		ReqDelay:         *reqDelayPtr,
 		Output:           *outputPtr,
@@ -62,5 +67,6 @@ func ParseFlags() (Settings, error) {
 		SerpApiKey:       serpApiKey,
 		SkipBinaryEdge:   *skipBinaryEdgePtr,
 		SkipGoogleDork:   *skipGoogleDorkPtr,
+		SkipAXFR:         *skipAXFRPtr,
 	}, nil
 }

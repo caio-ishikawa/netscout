@@ -35,23 +35,29 @@ func NewApp(settings Settings) (NetScout, error) {
 	}, nil
 }
 
-func (ns *NetScout) Start() {
+func (ns *NetScout) Scan() {
 	if ns.settings.Output != "" {
 		ns.createOutputFile(ns.settings.Output)
 	}
 
-	subdomains, err := ns.getBinaryEdgeSubdomains()
+	toCrawl := []url.URL{ns.settings.SeedUrl}
+
+	subdomains, err := ns.attemptAXFR()
 	if err != nil {
 		ns.displayWarning(err.Error())
 	}
 
-	for _, subdomain := range subdomains {
-		ns.displayMsg(subdomain.String())
+	ns.outputUrls(subdomains)
+
+	binaryEdgeRes, err := ns.getBinaryEdgeSubdomains()
+	if err != nil {
+		ns.displayWarning(err.Error())
 	}
 
+	ns.outputUrls(binaryEdgeRes)
+
 	// crawling happens concurrently, and it updates the state as it finds URLs
-	toCrawl := append(subdomains, ns.settings.SeedUrl)
-	ns.crawl(true, toCrawl)
+	ns.crawl(ns.settings.LockHost, toCrawl)
 
 	filetypeLinks, err := ns.getFiletypeResults()
 	if err != nil {
@@ -73,7 +79,29 @@ func (ns *NetScout) createOutputFile(name string) {
 	ns.outputFile = file
 }
 
+func (ns *NetScout) attemptAXFR() ([]url.URL, error) {
+	if ns.settings.SkipAXFR {
+		return []url.URL{}, fmt.Errorf("skipping AXFR")
+	}
+
+	ns.displaySuccess("Attempting AXFR")
+
+	domain := shared.RemoveScheme(ns.settings.SeedUrl)
+	subdomains, err := osint.ZoneTransfer(domain)
+	if err != nil {
+		return []url.URL{}, err
+	}
+
+	if len(subdomains) == 0 {
+		return []url.URL{}, fmt.Errorf("AFXR yielded no results")
+	}
+
+	return subdomains, nil
+}
+
 func (ns *NetScout) getBinaryEdgeSubdomains() ([]url.URL, error) {
+	ns.displaySuccess("Querying BinaryEdge")
+
 	if ns.settings.SkipBinaryEdge {
 		return []url.URL{}, fmt.Errorf("skipping BinaryEdge subdomain search")
 	}
@@ -130,7 +158,7 @@ func (ns *NetScout) crawl(lockHost bool, toCrawl []url.URL) {
 
 func (ns *NetScout) getFiletypeResults() (osint.GoogleResults, error) {
 	if ns.settings.SkipGoogleDork {
-		return osint.GoogleResults{}, fmt.Errorf("skipping Goole dork")
+		return osint.GoogleResults{}, fmt.Errorf("skipping Google dork")
 	}
 
 	scanMsg := "Scanning for"
@@ -213,6 +241,16 @@ func (ns *NetScout) updateExtensions(file string, url url.URL) {
 
 	if !exists {
 		ns.Extensions = append(ns.Extensions, extension)
+	}
+}
+
+// Displays found URLs and writes to output file depedning on settings.output
+func (ns *NetScout) outputUrls(urls []url.URL) {
+	for _, subdomain := range urls {
+		if ns.settings.Output != "" {
+			ns.outputFile.Write([]byte(subdomain.String() + "\n"))
+		}
+		ns.displayMsg(subdomain.String())
 	}
 }
 

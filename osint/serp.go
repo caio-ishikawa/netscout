@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+
+	"github.com/caio-ishikawa/netscout/shared"
 )
 
 const SERP_API_URL = "https://serpapi.com/search.json"
@@ -61,7 +63,7 @@ func (serp *SerpClient) SearchGoogle(queryStr string) (GoogleResults, error) {
 
 // Returns query string for searching for filetypes given a URL
 func GenerateFiletypeQuery(targetUrl url.URL, extensions []string) string {
-	domain := removeScheme(targetUrl)
+	domain := shared.RemoveScheme(targetUrl)
 	queryStr := fmt.Sprintf("site:%s ", domain)
 
 	for i, ext := range extensions {
