@@ -20,24 +20,39 @@ NetScout expects the API keys to be set as environment variables:
 ## Examples 
 Usage:
 ```
-Usage of NetScout:
+=======================================================================
+ ███▄    █ ▓█████▄▄▄█████▓  ██████  ▄████▄   ▒█████   █    ██ ▄▄▄█████▓
+ ██ ▀█   █ ▓█   ▀▓  ██▒ ▓▒▒██    ▒ ▒██▀ ▀█  ▒██▒  ██▒ ██  ▓██▒▓  ██▒ ▓▒
+▓██  ▀█ ██▒▒███  ▒ ▓██░ ▒░░ ▓██▄   ▒▓█    ▄ ▒██░  ██▒▓██  ▒██░▒ ▓██░ ▒░
+▓██▒  ▐▌██▒▒▓█  ▄░ ▓██▓ ░   ▒   ██▒▒▓▓▄ ▄██▒▒██   ██░▓▓█  ░██░░ ▓██▓ ░ 
+▒██░   ▓██░░▒████▒ ▒██▒ ░ ▒██████▒▒▒ ▓███▀ ░░ ████▓▒░▒▒█████▓   ▒██▒ ░ 
+░ ▒░   ▒ ▒ ░░ ▒░ ░ ▒ ░░   ▒ ▒▓▒ ▒ ░░ ░▒ ▒  ░░ ▒░▒░▒░ ░▒▓▒ ▒ ▒   ▒ ░░   
+░ ░░   ░ ▒░ ░ ░  ░   ░    ░ ░▒  ░ ░  ░  ▒     ░ ▒ ▒░ ░░▒░ ░ ░     ░    
+   ░   ░ ░    ░    ░      ░  ░  ░  ░        ░ ░ ░ ▒   ░░░ ░ ░   ░      
+         ░    ░  ░              ░  ░ ░          ░ ░     ░              
+=======================================================================
+Usage:
+  -u string
+        A string representing the URL
   -d int
         An integer representing the depth of the crawl
+  -t int
+        An integer representing the amount of threads to use for the scans (default 5)
   -delay int
         An integer representing the delay between requests in miliseconds
   -lock-host
         A boolean - if set, it will only save URLs with the same host as the seed
   -o string
         A string representing the name of the output file
+  -v
+        A boolean - if set, it will display all found URLs
+
+  -skip-axfr
+        A bool - if set, it will skip the DNS zone trasnfer attempt
   -skip-binaryedge
         A bool - if set, it will skip BinaryEdge subdomain scan
-  -skip-google-dork
+  -skip-google-dork 
         A bool - if set, it will skip the Google filetype scan
-  -t int
-        An integer representing the amount of threads to use for the scans (default 5)
-  -u string
-        A string representing the URL
-  -v    A boolean - if set, it will display all found URLs
 ```
 
 Sets seed url, depth, and output file:
