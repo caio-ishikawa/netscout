@@ -15,7 +15,19 @@ func TestCrawlerAllHosts(t *testing.T) {
 	seed, _ := url.Parse("http://localhost")
 	comms := shared.NewCommsChannels()
 
-	crawler := NewCrawler(false, *seed, []url.URL{*seed}, 5, comms)
+	threadCount := 5
+	depth := 5
+	reqDelay := 0
+
+	crawler := NewCrawler(
+		false,
+		*seed,
+		threadCount,
+		reqDelay,
+		[]url.URL{*seed},
+		depth,
+		comms,
+	)
 
 	go crawler.Crawl(0)
 
@@ -53,7 +65,19 @@ func TestCrawlerLockedHost(t *testing.T) {
 	seed, _ := url.Parse("http://localhost")
 	comms := shared.NewCommsChannels()
 
-	crawler := NewCrawler(true, *seed, []url.URL{*seed}, 5, comms)
+	threadCount := 5
+	depth := 5
+	reqDelay := 0
+
+	crawler := NewCrawler(
+		true,
+		*seed,
+		threadCount,
+		reqDelay,
+		[]url.URL{*seed},
+		depth,
+		comms,
+	)
 
 	go crawler.Crawl(0)
 

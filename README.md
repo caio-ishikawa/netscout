@@ -6,13 +6,15 @@ It consists of the following components:
 - BinaryEdge client: Gets subdomains
 - DNS: Attempts to perform a DNS zone transfer to extract subdomains
 - Crawler: Gets URLs and directories from the found subdomains + the seed url
-- SERP client: Gets links for files. It uses Google dorking techniques to search for specific file types based on file extensions found by the crawler.
+- SERP client: Gets links for files. It uses Google dorking techniques to search for specific file types based on file extensions found by the crawler
 
 ## Setup
-### Requirements
-- Go 1.21.0
-- BinaryEdge API key (optional)
-- SERP API key (optional)
+### How to install
+- Go install:
+      - Run ```go install github.com/caio-ishikawa/netscout@latest```
+- Build from source:
+      - Clone repository
+      - Run ```make install```
 
 ### Setting API keys
 NetScout expects the API keys to be set as environment variables:
@@ -40,7 +42,7 @@ Usage:
         An integer representing the depth of the crawl
   -t int
         An integer representing the amount of threads to use for the scans (default 5)
-  -delay int
+  -delay-ms int
         An integer representing the delay between requests in miliseconds
   -lock-host
         A boolean - if set, it will only save URLs with the same host as the seed
@@ -72,6 +74,14 @@ Sets thread count to 5 and req delay to 1000ms
 netscout -u https://crawler-test.com -d 2 -t 5 --delay 1000 -o netscout.txt
 ```
 
-## Testing
-The crawler tests require the [DVWA (Damn Vulnerable Web App)](https://github.com/citizen-stig/dockerdvwa/tree/master) to be running locally with port 80 exposed.
+## Development
+Before submitting a PR, please ensure that the project builds successfully and that all existing tests pass. More info at [Testing](#Testing)
 
+Thank you for your interest in contributing to this project!
+
+## Testing
+The tests are placed in the same directory as the tested file, and the crawler tests require the [DVWA (Damn Vulnerable Web App)](https://github.com/citizen-stig/dockerdvwa/tree/master) to be running locally with port 80 exposed. 
+All the setup needed for the tests are handled in the Makefile: 
+- To pull the DVWA image, run ```make test-container-pull```
+- To run the container ```make test-container-run```
+- To run the tests ```make test```

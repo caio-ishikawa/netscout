@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/caio-ishikawa/netscout/shared"
 	"golang.org/x/net/html"
@@ -15,6 +17,8 @@ type Crawler struct {
 	lockHost bool
 	seedUrl  url.URL
 	maxDepth int
+	threads  int
+	delay    int
 	toCrawl  []url.URL
 	urlMap   map[string]url.URL
 	comms    shared.CommsChannels
@@ -23,6 +27,8 @@ type Crawler struct {
 func NewCrawler(
 	lockHost bool,
 	seedUrl url.URL,
+	threads int,
+	delay int,
 	toCrawl []url.URL,
 	maxDepth int,
 	comms shared.CommsChannels,
@@ -30,6 +36,8 @@ func NewCrawler(
 	return Crawler{
 		lockHost: lockHost,
 		seedUrl:  seedUrl,
+		threads:  threads,
+		delay:    delay,
 		maxDepth: maxDepth,
 		toCrawl:  toCrawl,
 		urlMap:   map[string]url.URL{},
@@ -46,17 +54,47 @@ func (crawler *Crawler) Crawl(currDepth int) {
 	toCrawl := crawler.toCrawl
 	crawler.toCrawl = []url.URL{}
 
-	for i := range toCrawl {
-		htmlNode, err := crawler.getHtmlContent(toCrawl[i])
-		if err != nil {
-			crawler.propagateWarning(err.Error())
-			continue
-		}
+	semaphore := make(chan struct{}, crawler.threads)
+	var wg sync.WaitGroup
 
-		crawler.findLinks(htmlNode, toCrawl[i])
+	for i := range toCrawl {
+		wg.Add(1)
+
+		// crawls page, updates toCrawl, and propagates found URLs through comms
+		go crawler.crawlSinglePage(toCrawl[i], &wg, semaphore)
 	}
 
+	wg.Wait()
+
 	crawler.Crawl(currDepth + 1)
+}
+
+// Orchestrates the crawling of a single page. Gets HTML, finds URLs, propagates it and updates toCrawl
+func (crawler *Crawler) crawlSinglePage(url url.URL, wg *sync.WaitGroup, semaphore chan struct{}) {
+	defer wg.Done()
+
+	semaphore <- struct{}{}
+
+	htmlNode, err := crawler.getHtmlContent(url)
+	if err != nil {
+		crawler.propagateWarning(err.Error())
+		return
+	}
+
+	// time request was made
+	reqTime := time.Now()
+
+	// TODO: make this asynchronous
+	crawler.findLinks(htmlNode, url)
+
+	// verifies how long to timeout before making next request
+	elapsed := time.Since(reqTime)
+	if int(elapsed.Milliseconds()) < crawler.delay {
+		dur := crawler.delay - int(elapsed.Milliseconds())
+		time.Sleep(time.Duration(dur) * time.Millisecond)
+	}
+
+	<-semaphore
 }
 
 func (crawler *Crawler) getHtmlContent(url url.URL) (*html.Node, error) {

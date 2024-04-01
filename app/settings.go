@@ -31,8 +31,8 @@ func ParseFlags() (Settings, error) {
 	urlPtr := flag.String("u", "", "A string representing the URL")
 	depthPtr := flag.Int("d", 0, "An integer representing the depth of the crawl")
 	lockHostPtr := flag.Bool("lock-host", false, "A boolean - if set, it will only save URLs with the same host as the seed")
-	threadCountPtr := flag.Int("t", 5, "An integer representing the amount of threads to use for the scans")
-	reqDelayPtr := flag.Int("delay", 0, "An integer representing the delay between requests in miliseconds")
+	threadCountPtr := flag.Int("t", 1, "An integer representing the amount of threads to use for the scans")
+	reqDelayPtr := flag.Int("delay-ms", 0, "An integer representing the delay between requests in miliseconds")
 	outputPtr := flag.String("o", "", "A string representing the name of the output file")
 	verbosePtr := flag.Bool("v", false, "A boolean - if set, it will display all found URLs")
 

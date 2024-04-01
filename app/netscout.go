@@ -143,18 +143,20 @@ func (ns *NetScout) crawl(lockHost bool, toCrawl []url.URL) {
 	crawler := osint.NewCrawler(
 		lockHost,
 		ns.settings.SeedUrl,
+		ns.settings.ThreadCount,
+		ns.settings.ReqDelay,
 		toCrawl,
 		ns.settings.Depth,
 		comms,
 	)
 
-	go crawler.Crawl(0)
-
-	ns.handleComms(
+	go ns.handleComms(
 		comms.DataChan,
 		comms.WarningChan,
 		comms.DoneChan,
 	)
+
+	crawler.Crawl(0)
 }
 
 func (ns *NetScout) getFiletypeResults() (osint.GoogleResults, error) {
@@ -209,7 +211,7 @@ func (ns *NetScout) handleComms(
 			wg.Wait()
 			return
 		default:
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(1 * time.Millisecond)
 		}
 	}
 }

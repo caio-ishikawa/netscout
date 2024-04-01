@@ -24,12 +24,14 @@ func main() {
 
 	settings, err := app.ParseFlags()
 	if err != nil {
-		panic(err)
+		fmt.Println("Error parsing flags. Run netscout with -h to see available flags.")
+		return
 	}
 
 	app, err := app.NewApp(settings)
 	if err != nil {
-		panic(err)
+		fmt.Printf("Error initializing netscout. Failed with error: %s\n", err.Error())
+		return
 	}
 
 	app.Scan()
