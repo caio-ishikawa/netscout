@@ -16,7 +16,7 @@ test-container-pull:
 
 # Run the Docker container for DVWA
 test-container-run:
-	docker run -p 80:80 -p 53:53 dvwa-test-container
+	docker run -d -p 80:80 citizenstig/dvwa
 
 test:
 	go test ./...

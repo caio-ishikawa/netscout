@@ -184,7 +184,7 @@ func (ns *NetScout) getFiletypeResults() ([]url.URL, error) {
 	return results, nil
 }
 
-// handles the consumption of incoming messages until process is done.
+// Handles the consumption of incoming messages until process is done.
 func (ns *NetScout) handleComms(
 	dataChan chan shared.ScannedItem,
 	warningChan chan string,
