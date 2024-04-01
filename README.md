@@ -1,12 +1,12 @@
 # NetScout
 <img src="https://i.imgur.com/pTmMYmZ.png">
 
-NetScout is an OSINT tool that finds domains, subdomains, directories, endpoints and files.
+NetScout is an OSINT tool that finds domains, subdomains, directories, endpoints and files for a given seed URL.
 It consists of the following components:
 - BinaryEdge client: Gets subdomains
-- DNS AXFR (TODO): Attempts to perform a DNS transfer to extract subdomains
-- Crawler: Gets links from the found subdomains + the seed url
-- SERP client: Gets links for files. It uses Google dorking techniques to search for specific file types based on file extensions found by the crawler.  
+- DNS: Attempts to perform a DNS zone transfer to extract subdomains
+- Crawler: Gets URLs and directories from the found subdomains + the seed url
+- SERP client: Gets links for files. It uses Google dorking techniques to search for specific file types based on file extensions found by the crawler.
 
 ## Setup
 ### Requirements
@@ -71,3 +71,7 @@ Sets thread count to 5 and req delay to 1000ms
 ```sh
 netscout -u https://crawler-test.com -d 2 -t 5 --delay 1000 -o netscout.txt
 ```
+
+## Testing
+The crawler tests require the [DVWA (Damn Vulnerable Web App)](https://github.com/citizen-stig/dockerdvwa/tree/master) to be running locally with port 80 exposed.
+
