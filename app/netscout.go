@@ -44,14 +44,14 @@ func (ns *NetScout) Scan() {
 
 	subdomains, err := ns.attemptAXFR()
 	if err != nil {
-		ns.displayWarning(err.Error())
+		ns.displayWarning("failed to perform zone transfer - continuing scan")
 	}
 
 	ns.outputUrls(subdomains)
 
 	binaryEdgeRes, err := ns.getBinaryEdgeSubdomains()
 	if err != nil {
-		ns.displayWarning(err.Error())
+		ns.displayWarning("failed to query BinaryEdge - continuing scan")
 	}
 
 	ns.outputUrls(binaryEdgeRes)
@@ -61,7 +61,7 @@ func (ns *NetScout) Scan() {
 
 	filetypeLinks, err := ns.getFiletypeResults()
 	if err != nil {
-		ns.displayWarning(err.Error())
+		ns.displayWarning("failed to query for filetypes")
 	}
 
 	for _, found := range filetypeLinks.OrganicResults {
@@ -81,7 +81,7 @@ func (ns *NetScout) createOutputFile(name string) {
 
 func (ns *NetScout) attemptAXFR() ([]url.URL, error) {
 	if ns.settings.SkipAXFR {
-		return []url.URL{}, fmt.Errorf("skipping AXFR")
+		return []url.URL{}, nil
 	}
 
 	ns.displaySuccess("Attempting AXFR")
@@ -100,11 +100,12 @@ func (ns *NetScout) attemptAXFR() ([]url.URL, error) {
 }
 
 func (ns *NetScout) getBinaryEdgeSubdomains() ([]url.URL, error) {
+	if ns.settings.SkipBinaryEdge {
+		return []url.URL{}, nil
+	}
+
 	ns.displaySuccess("Querying BinaryEdge")
 
-	if ns.settings.SkipBinaryEdge {
-		return []url.URL{}, fmt.Errorf("skipping BinaryEdge subdomain search")
-	}
 	client := osint.NewBinaryEdgeClient(ns.settings.BinaryEdgeApiKey)
 	res, err := client.QuerySubdomains(ns.settings.SeedUrl)
 	if err != nil {
@@ -158,7 +159,7 @@ func (ns *NetScout) crawl(lockHost bool, toCrawl []url.URL) {
 
 func (ns *NetScout) getFiletypeResults() (osint.GoogleResults, error) {
 	if ns.settings.SkipGoogleDork {
-		return osint.GoogleResults{}, fmt.Errorf("skipping Google dork")
+		return osint.GoogleResults{}, nil
 	}
 
 	scanMsg := "Scanning for"
