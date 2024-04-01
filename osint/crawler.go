@@ -14,6 +14,7 @@ import (
 const CRAWLER_NAME = "CRAWLER"
 
 type Crawler struct {
+	mutex    sync.Mutex
 	lockHost bool
 	seedUrl  url.URL
 	maxDepth int
@@ -34,6 +35,7 @@ func NewCrawler(
 	comms shared.CommsChannels,
 ) Crawler {
 	return Crawler{
+		mutex:    sync.Mutex{},
 		lockHost: lockHost,
 		seedUrl:  seedUrl,
 		threads:  threads,
@@ -146,8 +148,12 @@ func (crawler *Crawler) handleFoundUrl(urlStr, host, scheme string) {
 		return
 	}
 
+	crawler.mutex.Lock()
+	defer crawler.mutex.Unlock()
+
 	_, exists := crawler.urlMap[url.String()]
 	if !exists {
+
 		crawler.toCrawl = append(crawler.toCrawl, url)
 		crawler.urlMap[url.String()] = url
 
