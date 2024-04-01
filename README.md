@@ -1,5 +1,5 @@
 # NetScout
-<img src="https://i.imgur.com/ghFFq7E.png" height="1000">
+<img src="screenshot.png">
 
 NetScout is an OSINT tool that finds domains, subdomains, directories, endpoints and files for a given seed URL.
 It consists of the following components:
