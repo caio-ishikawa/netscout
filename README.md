@@ -16,6 +16,10 @@ It consists of the following components:
       - Clone repository
       - Run ```make install```
 
+## External APIs
+NetScout uses two external APIs: BinaryEdge and SerpAPI.
+BinaryEdge is used to query for historical data of subdomains registered to the seed URL, and SERP API is used to collect Google Search results for speficic filetypes for the seed URL.
+
 ### Setting API keys
 NetScout expects the API keys to be set as environment variables:
 - ```export BINARYEDGE_API_KEY="<key>"```
@@ -57,6 +61,8 @@ Usage:
         A bool - if set, it will skip BinaryEdge subdomain scan
   -skip-google-dork 
         A bool - if set, it will skip the Google filetype scan
+  -headless
+        A bool - if set, all requests in the crawler will be made through a headless Chrome browser (requires Google Chrome)
 ```
 
 Sets seed url, depth, and output file:
@@ -69,9 +75,9 @@ Skips BinaryEdge and Google dork:
 netscout -u https://crawler-test.com -d 2 --skip-binaryedge --skip-google-dork -o netscout.txt
 ```
 
-Sets thread count to 5 and req delay to 1000ms
+Sets thread count to 5, req delay to 1000ms, and forces requests to be made throught a headless Chrome browser.
 ```sh
-netscout -u https://crawler-test.com -d 2 -t 5 --delay 1000 -o netscout.txt
+netscout -u https://crawler-test.com -d 2 -t 5 --delay-ms 1000 --headless -o netscout.txt
 ```
 
 ## Development

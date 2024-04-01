@@ -57,7 +57,7 @@ func (ns *NetScout) Scan() {
 	ns.outputUrls(binaryEdgeRes)
 
 	// crawling happens concurrently, and it updates the state as it finds URLs
-	ns.crawl(ns.settings.LockHost, toCrawl)
+	ns.crawl(toCrawl)
 
 	filetypeLinks, err := ns.getFiletypeResults()
 	if err != nil {
@@ -133,13 +133,14 @@ func (ns *NetScout) getBinaryEdgeSubdomains() ([]url.URL, error) {
 	return output, nil
 }
 
-func (ns *NetScout) crawl(lockHost bool, toCrawl []url.URL) {
+func (ns *NetScout) crawl(toCrawl []url.URL) {
 	ns.displaySuccess("Starting crawl")
 
 	comms := shared.NewCommsChannels()
 
 	crawler := osint.NewCrawler(
-		lockHost,
+		ns.settings.Headless,
+		ns.settings.LockHost,
 		ns.settings.SeedUrl,
 		ns.settings.ThreadCount,
 		ns.settings.ReqDelay,

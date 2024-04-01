@@ -13,6 +13,7 @@ const (
 )
 
 type Settings struct {
+	Headless         bool
 	SeedUrl          url.URL
 	Depth            int
 	LockHost         bool
@@ -28,6 +29,7 @@ type Settings struct {
 }
 
 func ParseFlags() (Settings, error) {
+	headlessPtr := flag.Bool("headless", false, "A bool - if set, all requests will be made by a headless Chrome browser (requires Google Chrome)")
 	urlPtr := flag.String("u", "", "A string representing the URL")
 	depthPtr := flag.Int("d", 0, "An integer representing the depth of the crawl")
 	lockHostPtr := flag.Bool("lock-host", false, "A boolean - if set, it will only save URLs with the same host as the seed")
@@ -56,6 +58,7 @@ func ParseFlags() (Settings, error) {
 	serpApiKey := os.Getenv("SERP_API_KEY")
 
 	return Settings{
+		Headless:         *headlessPtr,
 		SeedUrl:          *parsedUrl,
 		Depth:            *depthPtr,
 		LockHost:         *lockHostPtr,

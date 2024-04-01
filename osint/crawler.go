@@ -1,6 +1,7 @@
 package osint
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 	"strings"
@@ -8,6 +9,7 @@ import (
 	"time"
 
 	"github.com/caio-ishikawa/netscout/shared"
+	"github.com/chromedp/chromedp"
 	"golang.org/x/net/html"
 )
 
@@ -15,6 +17,7 @@ const CRAWLER_NAME = "CRAWLER"
 
 type Crawler struct {
 	mutex    sync.Mutex
+	headless bool
 	lockHost bool
 	seedUrl  url.URL
 	maxDepth int
@@ -26,6 +29,7 @@ type Crawler struct {
 }
 
 func NewCrawler(
+	headless bool,
 	lockHost bool,
 	seedUrl url.URL,
 	threads int,
@@ -36,6 +40,7 @@ func NewCrawler(
 ) Crawler {
 	return Crawler{
 		mutex:    sync.Mutex{},
+		headless: headless,
 		lockHost: lockHost,
 		seedUrl:  seedUrl,
 		threads:  threads,
@@ -77,10 +82,23 @@ func (crawler *Crawler) crawlSinglePage(url url.URL, wg *sync.WaitGroup, semapho
 
 	semaphore <- struct{}{}
 
-	htmlNode, err := crawler.getHtmlContent(url)
-	if err != nil {
-		crawler.propagateWarning(err.Error())
-		return
+	var htmlNode *html.Node
+	if crawler.headless {
+		node, err := crawler.getHtmlContentHeadless(url)
+		if err != nil {
+			crawler.propagateWarning(err.Error())
+			return
+		}
+
+		htmlNode = node
+	} else {
+		node, err := crawler.getHtmlContent(url)
+		if err != nil {
+			crawler.propagateWarning(err.Error())
+			return
+		}
+
+		htmlNode = node
 	}
 
 	// time request was made
@@ -99,6 +117,7 @@ func (crawler *Crawler) crawlSinglePage(url url.URL, wg *sync.WaitGroup, semapho
 	<-semaphore
 }
 
+// Gets HTML content from page with simple HTTP client
 func (crawler *Crawler) getHtmlContent(url url.URL) (*html.Node, error) {
 	req, err := generateRequest(url)
 	if err != nil {
@@ -120,6 +139,28 @@ func (crawler *Crawler) getHtmlContent(url url.URL) (*html.Node, error) {
 	}
 
 	return htmlDoc, nil
+}
+
+// Gets HTML content from page with headless Chrome browser
+func (crawler *Crawler) getHtmlContentHeadless(url url.URL) (*html.Node, error) {
+	ctx, cancel := chromedp.NewContext(context.Background())
+	defer cancel()
+
+	var content string
+	if err := chromedp.Run(ctx,
+		chromedp.Navigate(url.String()),
+		chromedp.WaitVisible("html", chromedp.ByQuery),
+		chromedp.OuterHTML("body", &content),
+	); err != nil {
+		return nil, err
+	}
+
+	c, err := html.Parse(strings.NewReader(content))
+	if err != nil {
+		return nil, err
+	}
+
+	return c, nil
 }
 
 // Recursively gets URLs from a page and propagates it
