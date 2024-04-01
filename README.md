@@ -1,4 +1,6 @@
 # NetScout
+<img src="https://i.imgur.com/pTmMYmZ.png">
+
 NetScout is an OSINT tool that finds domains, subdomains, directories, endpoints and files.
 It consists of the following components:
 - BinaryEdge client: Gets subdomains
