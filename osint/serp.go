@@ -42,23 +42,36 @@ func NewSerpClient(apiKey string) (SerpClient, error) {
 	return SerpClient{*u}, nil
 }
 
-func (serp *SerpClient) SearchGoogle(queryStr string) (GoogleResults, error) {
+func (serp *SerpClient) SearchGoogle(queryStr string) ([]url.URL, []error) {
 	query := serp.url.Query()
 	query.Add("q", queryStr)
 	serp.url.RawQuery = query.Encode()
 
+	var errs []error
+
 	resp, err := http.Get(serp.url.String())
 	if err != nil {
-		return GoogleResults{}, err
+		return []url.URL{}, []error{err}
 	}
 	defer resp.Body.Close()
 
-	var res GoogleResults
-	if err = json.NewDecoder(resp.Body).Decode(&res); err != nil {
-		return GoogleResults{}, err
+	var results GoogleResults
+	if err = json.NewDecoder(resp.Body).Decode(&results); err != nil {
+		return []url.URL{}, []error{err}
 	}
 
-	return res, nil
+	var output []url.URL
+	for _, result := range results.OrganicResults {
+		u, err := url.Parse(result.Link)
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+
+		output = append(output, *u)
+	}
+
+	return output, errs
 }
 
 // Returns query string for searching for filetypes given a URL

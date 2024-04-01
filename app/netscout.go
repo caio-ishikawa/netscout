@@ -64,9 +64,7 @@ func (ns *NetScout) Scan() {
 		ns.displayWarning("failed to query for filetypes")
 	}
 
-	for _, found := range filetypeLinks.OrganicResults {
-		ns.displayMsg(found.Link)
-	}
+	ns.outputUrls(filetypeLinks)
 }
 
 func (ns *NetScout) createOutputFile(name string) {
@@ -87,9 +85,9 @@ func (ns *NetScout) attemptAXFR() ([]url.URL, error) {
 	ns.displaySuccess("Attempting AXFR")
 
 	domain := shared.RemoveScheme(ns.settings.SeedUrl)
-	subdomains, err := osint.ZoneTransfer(domain)
-	if err != nil {
-		return []url.URL{}, err
+	subdomains, errs := osint.ZoneTransfer(domain)
+	if len(errs) > 0 {
+		ns.outputWarnings(errs)
 	}
 
 	if len(subdomains) == 0 {
@@ -159,9 +157,9 @@ func (ns *NetScout) crawl(lockHost bool, toCrawl []url.URL) {
 	crawler.Crawl(0)
 }
 
-func (ns *NetScout) getFiletypeResults() (osint.GoogleResults, error) {
+func (ns *NetScout) getFiletypeResults() ([]url.URL, error) {
 	if ns.settings.SkipGoogleDork {
-		return osint.GoogleResults{}, nil
+		return []url.URL{}, nil
 	}
 
 	scanMsg := "Scanning for"
@@ -173,13 +171,14 @@ func (ns *NetScout) getFiletypeResults() (osint.GoogleResults, error) {
 
 	serpClient, err := osint.NewSerpClient(ns.settings.SerpApiKey)
 	if err != nil {
-		return osint.GoogleResults{}, err
+		return []url.URL{}, err
 	}
 
 	queryStr := osint.GenerateFiletypeQuery(ns.settings.SeedUrl, ns.Extensions)
-	results, err := serpClient.SearchGoogle(queryStr)
-	if err != nil {
-		return osint.GoogleResults{}, nil
+	results, errs := serpClient.SearchGoogle(queryStr)
+	if len(errs) > 0 {
+		ns.outputWarnings(errs)
+		return []url.URL{}, nil
 	}
 
 	return results, nil
@@ -254,6 +253,13 @@ func (ns *NetScout) outputUrls(urls []url.URL) {
 			ns.outputFile.Write([]byte(subdomain.String() + "\n"))
 		}
 		ns.displayMsg(subdomain.String())
+	}
+}
+
+// Displays warnings from error list
+func (ns *NetScout) outputWarnings(errs []error) {
+	for _, err := range errs {
+		ns.displayWarning(err.Error())
 	}
 }
 
