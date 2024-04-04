@@ -95,9 +95,11 @@ Thank you for your interest in contributing to this project!
 
 ## Testing
 The tests are placed in the same directory as the tested file, and the crawler tests require the [DVWA (Damn Vulnerable Web App)](https://github.com/citizen-stig/dockerdvwa/tree/master) to be running locally with port 80 exposed. 
+Before running the tests, the test files must be set up.
+
 All the setup needed for the tests are handled in the Makefile: 
 - To pull the DVWA image, run ```make test-container-pull```
-- To run the container ```make test-container-run```
 - To setup the test files ```make testfiles-setup```
-- To teardown the test files ```make testfiles-teardown```
+- To run the container ```make test-container-run```
 - To run the tests ```make test```
+- To teardown the test files ```make testfiles-teardown```
