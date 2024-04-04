@@ -1,9 +1,10 @@
 package osint
 
 import (
-	"github.com/caio-ishikawa/netscout/shared"
 	"os"
 	"testing"
+
+	"github.com/caio-ishikawa/netscout/shared"
 )
 
 func TestUnzipSingleDownload(t *testing.T) {

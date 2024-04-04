@@ -27,8 +27,10 @@ const (
 	unexpectedShortenedUrlFormat = "invalid format for shortened URL entry"
 )
 
-const latestUpload = "https://archive.org/advancedsearch.php?q=collection:(UrlteamWebCrawls)&sort=-publicdate&fl[]=identifier,download&rows=1&output=json"
-const base = "https://archive.org/compress"
+const (
+	latestUpload = "https://archive.org/advancedsearch.php?q=collection:(UrlteamWebCrawls)&sort=-publicdate&fl[]=identifier,download&rows=1&output=json"
+	base         = "https://archive.org/compress"
+)
 
 // Represents the urlteam's latest upload to archive.org
 type LatestUpload struct {

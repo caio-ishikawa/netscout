@@ -115,7 +115,6 @@ func (ns *NetScout) getShortenedUrls(comms shared.CommsChannels, wg *sync.WaitGr
 	}
 
 	finder.DecompressXZ()
-
 }
 
 func (ns *NetScout) attemptAXFR() ([]url.URL, error) {
