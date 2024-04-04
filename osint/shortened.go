@@ -50,10 +50,10 @@ type ShortenedUrlFinder struct {
 
 func NewShortenedUrlFinder(host string, comms shared.CommsChannels) ShortenedUrlFinder {
 	return ShortenedUrlFinder{
-		DeletePostDownload: true,
+		DeletePostDownload: true, // used mostly for testing
 		TargetHost:         host,
 		ZipFilePath:        "shortened.zip",
-		DestinationPath:    "data",
+		DestinationPath:    "shortened_urls",
 		Comms:              comms,
 	}
 }
@@ -63,8 +63,6 @@ func (su *ShortenedUrlFinder) UnzipAllDownloads() error {
 	if err := su.unzipSingleDownload(0); err != nil {
 		return err
 	}
-
-	fmt.Println(su.ZipFilePath)
 
 	files, err := filepath.Glob(filepath.Join(su.DestinationPath, "*.zip"))
 	if err != nil {
@@ -91,7 +89,6 @@ func (su *ShortenedUrlFinder) UnzipAllDownloads() error {
 func (su *ShortenedUrlFinder) unzipSingleDownload(index int) error {
 	reader, err := zip.OpenReader(su.ZipFilePath)
 	if err != nil {
-		fmt.Println("fuck")
 		return err
 	}
 	defer reader.Close()
@@ -150,8 +147,6 @@ func (su *ShortenedUrlFinder) DecompressXZ() {
 		return
 	}
 
-	fmt.Println(len(files))
-
 	for _, file := range files {
 		cmd := exec.Command("xzcat", file)
 
@@ -166,8 +161,6 @@ func (su *ShortenedUrlFinder) DecompressXZ() {
 			su.Comms.WarningChan <- err.Error()
 			return
 		}
-
-		fmt.Println("command started")
 
 		var wg sync.WaitGroup
 		wg.Add(1)
@@ -234,7 +227,6 @@ func (su *ShortenedUrlFinder) DownloadShortenedURLs() error {
 		return err
 	}
 
-	fmt.Println("downloading...")
 	resp, err := http.Get(downloadURL.String())
 	if err != nil {
 		return err
@@ -257,7 +249,6 @@ func (su *ShortenedUrlFinder) DownloadShortenedURLs() error {
 		return err
 	}
 
-	fmt.Println("downloaded!")
 	return nil
 }
 

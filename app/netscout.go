@@ -11,7 +11,6 @@ import (
 
 	"github.com/caio-ishikawa/netscout/osint"
 	"github.com/caio-ishikawa/netscout/shared"
-	"github.com/theckman/yacspin"
 )
 
 const (
@@ -46,9 +45,11 @@ func (ns *NetScout) Scan() {
 	comms := shared.NewCommsChannels()
 	go ns.handleComms(comms)
 
-	// download, unzip, and scan shortened URL list
 	var wg sync.WaitGroup
-	go ns.getShortenedUrls(comms, &wg)
+	if ns.settings.Deep {
+		// download, unzip, and scan shortened URL list
+		go ns.getShortenedUrls(comms, &wg)
+	}
 
 	// zone transfer
 	subdomains, err := ns.attemptAXFR()
@@ -101,17 +102,17 @@ func (ns *NetScout) getShortenedUrls(comms shared.CommsChannels, wg *sync.WaitGr
 		comms,
 	)
 
-	// err := finder.DownloadShortenedURLs()
-	// if err != nil {
-	// 	panic(err)
-	// }
+	err := finder.DownloadShortenedURLs()
+	if err != nil {
+		comms.WarningChan <- "failed to download shortened URL list"
+	}
 
 	ns.displaySuccess("Shortened URL download complete")
 
-	// err = finder.UnzipAllDownloads()
-	// if err != nil {
-	// 	panic(err)
-	// }
+	err = finder.UnzipAllDownloads()
+	if err != nil {
+		comms.WarningChan <- "failed to unzip shortened URL list"
+	}
 
 	finder.DecompressXZ()
 
@@ -226,19 +227,7 @@ func (ns *NetScout) handleComms(comms shared.CommsChannels) {
 	var wg sync.WaitGroup
 	defer wg.Done()
 
-	spinnerStarted := false
-	cfg := yacspin.Config{
-		Frequency:       100 * time.Millisecond,
-		CharSet:         yacspin.CharSets[59],
-		Suffix:          "",
-		SuffixAutoColon: true,
-		StopCharacter:   "[✓]",
-		Colors:          []string{"fgGreen"},
-		StopColors:      []string{"fgGreen"},
-	}
-
-	// config is harcoded and no error is thrown
-	spinner, _ := yacspin.New(cfg)
+	msgDisplayed := false
 
 	for {
 		select {
@@ -247,24 +236,27 @@ func (ns *NetScout) handleComms(comms shared.CommsChannels) {
 		case msg := <-comms.WarningChan:
 			ns.displayWarning(msg)
 		case <-comms.CrawlDoneChan:
-			crawlFinish = true
 			ns.manageDoneChan(
 				shortenedFinish,
 				crawlFinish,
-				spinnerStarted,
+				msgDisplayed,
 				&wg,
-				spinner,
-				"In progress: Shortened URL scan",
+				"In progress: Shortened URL scan (this can take several minutes)",
 			)
+
+			msgDisplayed = true
+			crawlFinish = true
 		case <-comms.ShortenedDoneChan:
 			ns.manageDoneChan(
 				shortenedFinish,
 				crawlFinish,
-				spinnerStarted,
+				msgDisplayed,
 				&wg,
-				spinner,
 				"In progress: Crawler",
 			)
+
+			msgDisplayed = true
+			shortenedFinish = true
 		default:
 			time.Sleep(1 * time.Millisecond)
 		}
@@ -296,23 +288,21 @@ func (ns *NetScout) manageDataChan(msg shared.ScannedItem, wg *sync.WaitGroup) {
 func (ns *NetScout) manageDoneChan(
 	shortenedFinish bool,
 	crawlFinish bool,
-	spinnerStarted bool,
+	msgDisplayed bool,
 	wg *sync.WaitGroup,
-	spinner *yacspin.Spinner,
-	spinnerMsg string,
+	msg string,
 ) {
 	wg.Wait()
 
 	if crawlFinish && shortenedFinish {
-		spinner.Stop()
 		return
 	}
 
-	if !spinnerStarted {
-		spinner.Suffix(" " + spinnerMsg)
-		spinner.Start()
-		spinnerStarted = true
+	if msgDisplayed {
+		return
 	}
+
+	ns.displaySuccess(msg)
 }
 
 // Finds file extensions from list of URLs for google dork

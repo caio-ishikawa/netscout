@@ -26,6 +26,7 @@ type Settings struct {
 	SkipBinaryEdge   bool
 	SkipGoogleDork   bool
 	SkipAXFR         bool
+	Deep             bool
 }
 
 func ParseFlags() (Settings, error) {
@@ -41,6 +42,7 @@ func ParseFlags() (Settings, error) {
 	skipBinaryEdgePtr := flag.Bool("skip-binaryedge", false, "A bool - if set, it will skip BinaryEdge subdomain scan")
 	skipGoogleDorkPtr := flag.Bool("skip-google-dork", false, "A bool - if set, it will skip the Google filetype scan")
 	skipAXFRPtr := flag.Bool("skip-axfr", false, "A bool - if set, it will skip the DNS zone trasnfer attempt")
+	deepPtr := flag.Bool("deep", false, "A boolean - if set, it will perform a shortened URL scan (can take several minutes)")
 
 	flag.Parse()
 
@@ -71,5 +73,6 @@ func ParseFlags() (Settings, error) {
 		SkipBinaryEdge:   *skipBinaryEdgePtr,
 		SkipGoogleDork:   *skipGoogleDorkPtr,
 		SkipAXFR:         *skipAXFRPtr,
+		Deep:             *deepPtr,
 	}, nil
 }

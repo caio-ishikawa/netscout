@@ -7,6 +7,7 @@ It consists of the following components:
 - DNS: Attempts to perform a DNS zone transfer to extract subdomains
 - Crawler: Gets URLs and directories from the found subdomains + the seed url
 - SERP client: Gets links for files. It uses Google dorking techniques to search for specific file types based on file extensions found by the crawler
+- Shortened URL scan: This module leverages the URLTeam's [archive.org]() lists of shortened URLs. It downloads the list that was last uploaded, and checks every entry for a host that matches the seed URL's host. These text files can be very large (>500mb), and this scan takes several minutes.
 
 ## Setup
 ### How to install
@@ -63,6 +64,8 @@ Usage:
         A bool - if set, it will skip the Google filetype scan
   -headless
         A bool - if set, all requests in the crawler will be made through a headless Chrome browser (requires Google Chrome)
+  -deep
+        A bool - if set, the shortened URL scan will be performed (can take several minutes)
 ```
 
 Sets seed url, depth, and output file:
@@ -78,6 +81,11 @@ netscout -u https://crawler-test.com -d 2 --skip-binaryedge --skip-google-dork -
 Sets thread count to 5, req delay to 1000ms, and forces requests to be made throught a headless Chrome browser.
 ```sh
 netscout -u https://crawler-test.com -d 2 -t 5 --delay-ms 1000 --headless -o netscout.txt
+```
+
+Enables the shortened URL scan, sets crawler depth to 2, and threads to 5
+```sh
+netscout -u https://crawler-test.com --deep -d 2 -t 5
 ```
 
 ## Development
