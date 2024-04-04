@@ -56,7 +56,7 @@ Usage:
         A boolean - if set, it will display all found URLs
 
   -skip-axfr
-        A bool - if set, it will skip the DNS zone trasnfer attempt
+        A bool - if set, it will skip the DNS zone transfer attempt
   -skip-binaryedge
         A bool - if set, it will skip BinaryEdge subdomain scan
   -skip-google-dork 
