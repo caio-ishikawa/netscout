@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/caio-ishikawa/netscout/app"
 )
 
@@ -17,6 +18,7 @@ const logo = `
    ░   ░ ░    ░    ░      ░  ░  ░  ░        ░ ░ ░ ▒   ░░░ ░ ░   ░      
          ░    ░  ░              ░  ░ ░          ░ ░     ░              
 =======================================================================
+
 `
 
 func main() {

@@ -18,5 +18,16 @@ test-container-pull:
 test-container-run:
 	docker run -d -p 80:80 citizenstig/dvwa
 
+testfiles-setup:
+	zip -r ./testfiles/testdir-src/testinner.zip ./testfiles/testdir-src/testinner
+	zip -r ./testfiles/testdir-src/testinner2.zip ./testfiles/testdir-src/testinner2
+	zip -r ./testfiles/testdir.zip ./testfiles/testdir-src 
+	echo 'test.com/valid\nexample.com/example\ntesting.com/wow' > ./testfiles/testxz.txt 
+	xz ./testfiles/testxz.txt 
+
+testfiles-teardown:
+	rm -rf ./testfiles/*.xz ./testfiles/*.zip
+	rm -rf ./testfiles/testdir-src/*.zip
+
 test:
 	go test ./...

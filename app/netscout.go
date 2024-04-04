@@ -22,6 +22,7 @@ const (
 )
 
 type NetScout struct {
+	mutex      sync.Mutex
 	outputFile *os.File
 	settings   Settings
 	Extensions []string
@@ -40,31 +41,46 @@ func (ns *NetScout) Scan() {
 		ns.createOutputFile(ns.settings.Output)
 	}
 
-	toCrawl := []url.URL{ns.settings.SeedUrl}
+	// initiate communication channels
+	comms := shared.NewCommsChannels()
+	go ns.handleComms(comms)
 
+	var wg sync.WaitGroup
+	if ns.settings.Deep {
+		// download, unzip, and scan shortened URL list
+		go ns.getShortenedUrls(comms, &wg)
+	}
+
+	// zone transfer
 	subdomains, err := ns.attemptAXFR()
 	if err != nil {
 		ns.displayWarning("failed to perform zone transfer - continuing scan")
 	}
 
-	ns.outputUrls(subdomains)
+	ns.outputUrls(subdomains, shared.Axfr)
 
+	// binary edge subdomain query
 	binaryEdgeRes, err := ns.getBinaryEdgeSubdomains()
 	if err != nil {
 		ns.displayWarning("failed to query BinaryEdge - continuing scan")
 	}
 
-	ns.outputUrls(binaryEdgeRes)
+	ns.outputUrls(binaryEdgeRes, shared.BinaryEdge)
 
 	// crawling happens concurrently, and it updates the state as it finds URLs
-	ns.crawl(toCrawl)
+	toCrawl := []url.URL{ns.settings.SeedUrl}
+	ns.crawl(toCrawl, comms)
 
+	// google dork
 	filetypeLinks, err := ns.getFiletypeResults()
 	if err != nil {
 		ns.displayWarning("failed to query for filetypes")
 	}
 
-	ns.outputUrls(filetypeLinks)
+	ns.outputUrls(filetypeLinks, shared.Serp)
+
+	// wait for goroutines to finish
+	wg.Wait()
 }
 
 func (ns *NetScout) createOutputFile(name string) {
@@ -75,6 +91,30 @@ func (ns *NetScout) createOutputFile(name string) {
 	}
 
 	ns.outputFile = file
+}
+
+func (ns *NetScout) getShortenedUrls(comms shared.CommsChannels, wg *sync.WaitGroup) {
+	wg.Add(1)
+	defer wg.Done()
+
+	finder := osint.NewShortenedUrlFinder(
+		ns.settings.SeedUrl.Host,
+		comms,
+	)
+
+	err := finder.DownloadShortenedURLs()
+	if err != nil {
+		comms.WarningChan <- "failed to download shortened URL list"
+	}
+
+	ns.displaySuccess("Shortened URL download complete")
+
+	err = finder.UnzipAllDownloads()
+	if err != nil {
+		comms.WarningChan <- "failed to unzip shortened URL list"
+	}
+
+	finder.DecompressXZ()
 }
 
 func (ns *NetScout) attemptAXFR() ([]url.URL, error) {
@@ -133,10 +173,8 @@ func (ns *NetScout) getBinaryEdgeSubdomains() ([]url.URL, error) {
 	return output, nil
 }
 
-func (ns *NetScout) crawl(toCrawl []url.URL) {
+func (ns *NetScout) crawl(toCrawl []url.URL, comms shared.CommsChannels) {
 	ns.displaySuccess("Starting crawl")
-
-	comms := shared.NewCommsChannels()
 
 	crawler := osint.NewCrawler(
 		ns.settings.Headless,
@@ -147,12 +185,6 @@ func (ns *NetScout) crawl(toCrawl []url.URL) {
 		toCrawl,
 		ns.settings.Depth,
 		comms,
-	)
-
-	go ns.handleComms(
-		comms.DataChan,
-		comms.WarningChan,
-		comms.DoneChan,
 	)
 
 	crawler.Crawl(0)
@@ -186,36 +218,93 @@ func (ns *NetScout) getFiletypeResults() ([]url.URL, error) {
 }
 
 // Handles the consumption of incoming messages until process is done.
-func (ns *NetScout) handleComms(
-	dataChan chan shared.ScannedItem,
-	warningChan chan string,
-	doneChan chan struct{},
-) {
+// TODO: refactor this
+func (ns *NetScout) handleComms(comms shared.CommsChannels) {
+	crawlFinish := false
+	shortenedFinish := false
+
 	var wg sync.WaitGroup
+	defer wg.Done()
+
+	msgDisplayed := false
+
 	for {
 		select {
-		case msg := <-dataChan:
-			if ns.settings.Output != "" {
-				ns.outputFile.Write([]byte(msg.Url.String() + "\n"))
-			}
-			if !ns.settings.Verbose && msg.Relevance == shared.Low {
-				continue
-			}
-
-			wg.Add(1)
-			go ns.CollectFiletypes(msg.Url, &wg)
-			ns.displayMsg(msg.Url.String())
-		case msg := <-warningChan:
+		case msg := <-comms.DataChan:
+			ns.manageDataChan(msg, &wg)
+		case msg := <-comms.WarningChan:
 			ns.displayWarning(msg)
-		case <-doneChan:
-			wg.Wait()
-			return
+		case <-comms.CrawlDoneChan:
+			ns.manageDoneChan(
+				shortenedFinish,
+				crawlFinish,
+				msgDisplayed,
+				&wg,
+				"In progress: Shortened URL scan (this can take several minutes)",
+			)
+
+			msgDisplayed = true
+			crawlFinish = true
+		case <-comms.ShortenedDoneChan:
+			ns.manageDoneChan(
+				shortenedFinish,
+				crawlFinish,
+				msgDisplayed,
+				&wg,
+				"In progress: Crawler",
+			)
+
+			msgDisplayed = true
+			shortenedFinish = true
 		default:
 			time.Sleep(1 * time.Millisecond)
 		}
 	}
 }
 
+// Manages the incoming messages from the data channel. Starts a goroutine to collect file types from URLs.
+func (ns *NetScout) manageDataChan(msg shared.ScannedItem, wg *sync.WaitGroup) {
+	if msg.Source == shared.ShortenedUrl {
+		if msg.Url.Host != ns.settings.SeedUrl.Host {
+			return
+		}
+	}
+
+	if ns.settings.Output != "" {
+		ns.mutex.Lock()
+		ns.outputFile.Write([]byte(msg.Format()))
+		ns.mutex.Unlock()
+	}
+
+	wg.Add(1)
+
+	go ns.CollectFiletypes(msg.Url, wg)
+
+	ns.displayMsg(msg.Url.String())
+}
+
+// Manages the incoming messages from the done channel
+func (ns *NetScout) manageDoneChan(
+	shortenedFinish bool,
+	crawlFinish bool,
+	msgDisplayed bool,
+	wg *sync.WaitGroup,
+	msg string,
+) {
+	wg.Wait()
+
+	if crawlFinish && shortenedFinish {
+		return
+	}
+
+	if msgDisplayed {
+		return
+	}
+
+	ns.displaySuccess(msg)
+}
+
+// Finds file extensions from list of URLs for google dork
 func (ns *NetScout) CollectFiletypes(url url.URL, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -248,12 +337,15 @@ func (ns *NetScout) updateExtensions(file string, url url.URL) {
 }
 
 // Displays found URLs and writes to output file depedning on settings.output
-func (ns *NetScout) outputUrls(urls []url.URL) {
-	for _, subdomain := range urls {
+func (ns *NetScout) outputUrls(urls []url.URL, source shared.Source) {
+	for _, u := range urls {
+		scannedItem := shared.ScannedItem{Url: u, Source: source}
+
 		if ns.settings.Output != "" {
-			ns.outputFile.Write([]byte(subdomain.String() + "\n"))
+			ns.outputFile.Write([]byte(scannedItem.Format()))
 		}
-		ns.displayMsg(subdomain.String())
+
+		ns.displayMsg(u.String())
 	}
 }
 
@@ -265,17 +357,17 @@ func (ns *NetScout) outputWarnings(errs []error) {
 }
 
 func (ns *NetScout) displayMsg(item string) {
-	fmt.Printf("%s[x]%s %s\n", green, reset, item)
+	fmt.Printf("\n\033[A%s[x]%s %s\n", green, reset, item)
 }
 
 func (ns *NetScout) displaySuccess(text string) {
-	fmt.Printf("%s[x] %s%s\n", green, text, reset)
+	fmt.Printf("\n\033[A%s[x] %s%s\n", green, text, reset)
 }
 
 func (ns *NetScout) displayWarning(text string) {
-	fmt.Printf("%s[x] WARN: %s%s\n", yellow, text, reset)
+	fmt.Printf("\n\033[A%s[x] WARN: %s%s\n", yellow, text, reset)
 }
 
 func (ns *NetScout) displayError(text string) {
-	fmt.Printf("%s[x] ERR: %s%s\n", red, text, reset)
+	fmt.Printf("\n\033[A%s[x] ERR: %s%s\n", red, text, reset)
 }

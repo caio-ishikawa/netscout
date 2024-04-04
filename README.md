@@ -7,6 +7,7 @@ It consists of the following components:
 - DNS: Attempts to perform a DNS zone transfer to extract subdomains
 - Crawler: Gets URLs and directories from the found subdomains + the seed url
 - SERP client: Gets links for files. It uses Google dorking techniques to search for specific file types based on file extensions found by the crawler
+- Shortened URL scan: This module leverages the URLTeam's [lists of shortened URLs](https://archive.org/details/UrlteamWebCrawls). It downloads the list that was last uploaded, and checks every entry for a host that matches the seed URL's host. These text files can be very large (>500mb), and this scan takes several minutes. This module was heavily inspired [urlhunter](https://github.com/utkusen/urlhunter). 
 
 ## Setup
 ### How to install
@@ -63,6 +64,8 @@ Usage:
         A bool - if set, it will skip the Google filetype scan
   -headless
         A bool - if set, all requests in the crawler will be made through a headless Chrome browser (requires Google Chrome)
+  -deep
+        A bool - if set, the shortened URL scan will be performed (can take several minutes)
 ```
 
 Sets seed url, depth, and output file:
@@ -80,6 +83,11 @@ Sets thread count to 5, req delay to 1000ms, and forces requests to be made thro
 netscout -u https://crawler-test.com -d 2 -t 5 --delay-ms 1000 --headless -o netscout.txt
 ```
 
+Enables the shortened URL scan, sets crawler depth to 2, and threads to 5
+```sh
+netscout -u https://crawler-test.com --deep -d 2 -t 5
+```
+
 ## Development
 Before submitting a PR, please ensure that the project builds successfully and that all existing tests pass. More info at [Testing](#Testing)
 
@@ -87,7 +95,11 @@ Thank you for your interest in contributing to this project!
 
 ## Testing
 The tests are placed in the same directory as the tested file, and the crawler tests require the [DVWA (Damn Vulnerable Web App)](https://github.com/citizen-stig/dockerdvwa/tree/master) to be running locally with port 80 exposed. 
+Before running the tests, the test files must be set up.
+
 All the setup needed for the tests are handled in the Makefile: 
 - To pull the DVWA image, run ```make test-container-pull```
+- To setup the test files ```make testfiles-setup```
 - To run the container ```make test-container-run```
 - To run the tests ```make test```
+- To teardown the test files ```make testfiles-teardown```

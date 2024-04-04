@@ -54,7 +54,7 @@ func NewCrawler(
 
 func (crawler *Crawler) Crawl(currDepth int) {
 	if len(crawler.toCrawl) == 0 || currDepth == crawler.maxDepth {
-		close(crawler.comms.DoneChan)
+		close(crawler.comms.CrawlDoneChan)
 		return
 	}
 
@@ -198,40 +198,12 @@ func (crawler *Crawler) handleFoundUrl(urlStr, host, scheme string) {
 		crawler.toCrawl = append(crawler.toCrawl, url)
 		crawler.urlMap[url.String()] = url
 
-		relevanceScore := crawler.calcRelevanceScore(url)
-
 		scanned := shared.ScannedItem{
-			Url:       url,
-			Relevance: relevanceScore,
-			Source:    CRAWLER_NAME,
+			Url:    url,
+			Source: CRAWLER_NAME,
 		}
 
 		crawler.propagateData(scanned)
-	}
-}
-
-// TODO: make it not terrible :)
-func (crawler *Crawler) calcRelevanceScore(url url.URL) shared.Relevance {
-	score := 0
-
-	if url.Host == crawler.seedUrl.Host {
-		score++
-	}
-
-	if url.Scheme == "http" {
-		score++
-	}
-
-	if strings.Contains(url.Path, "=") {
-		score++
-	}
-
-	if score == 0 {
-		return shared.Low
-	} else if score == 1 {
-		return shared.Medium
-	} else {
-		return shared.High
 	}
 }
 

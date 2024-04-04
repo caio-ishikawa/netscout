@@ -2,12 +2,13 @@ package osint
 
 import (
 	"fmt"
-	"github.com/miekg/dns"
 	"net"
 	"net/url"
 	"os"
 	"strings"
 	"text/tabwriter"
+
+	"github.com/miekg/dns"
 
 	"github.com/caio-ishikawa/netscout/shared"
 )

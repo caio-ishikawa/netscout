@@ -1,14 +1,15 @@
 package osint
 
 import (
-	"github.com/caio-ishikawa/netscout/shared"
 	"net/url"
 	"testing"
 	"time"
+
+	"github.com/caio-ishikawa/netscout/shared"
 )
 
-//WARN: These tests need the DVWA container to be running locally with port 80 exposed
-//https://github.com/citizen-stig/dockerdvwa
+// WARN: These tests need the DVWA container to be running locally with port 80 exposed
+// https://github.com/citizen-stig/dockerdvwa
 
 // Tests crawling all URLs
 func TestCrawlerAllHosts(t *testing.T) {
@@ -46,7 +47,7 @@ func TestCrawlerAllHosts(t *testing.T) {
 			receivedData++
 		case <-comms.WarningChan:
 			receivedWarning++
-		case <-comms.DoneChan:
+		case <-comms.CrawlDoneChan:
 			if receivedData != expectedData {
 				t.Errorf("crawl expected %v msgs; got %v", expectedData, receivedData)
 				t.Fail()
@@ -60,7 +61,6 @@ func TestCrawlerAllHosts(t *testing.T) {
 			time.Sleep(50 * time.Millisecond)
 		}
 	}
-
 }
 
 // Tests crawling with locked host (only returning URLs with the same host as the seed)
@@ -99,7 +99,7 @@ func TestCrawlerLockedHost(t *testing.T) {
 			receivedData++
 		case <-comms.WarningChan:
 			receivedWarning++
-		case <-comms.DoneChan:
+		case <-comms.CrawlDoneChan:
 			if receivedData != expectedData {
 				t.Errorf("crawl expected %v msgs; got %v", expectedData, receivedData)
 				t.Fail()
@@ -151,7 +151,7 @@ func TestCrawlerLockedHostHeadless(t *testing.T) {
 			receivedData++
 		case <-comms.WarningChan:
 			receivedWarning++
-		case <-comms.DoneChan:
+		case <-comms.CrawlDoneChan:
 			if receivedData != expectedData {
 				t.Errorf("crawl expected %v msgs; got %v", expectedData, receivedData)
 				t.Fail()
