@@ -99,10 +99,10 @@ func (su *ShortenedUrlFinder) unzipSingleDownload(index int) error {
 	for _, file := range reader.File {
 		fullPath := filepath.Join(su.DestinationPath, file.Name)
 		split := strings.Split(fullPath, "/")
-		filePath := su.DestinationPath + "/" + split[len(split)-1]
+		// filePath := su.DestinationPath + "/" + split[len(split)-1]
 
 		if file.FileInfo().IsDir() {
-			os.Mkdir(filePath, os.ModePerm)
+			// os.Mkdir(filePath, os.ModePerm)
 			continue
 		}
 

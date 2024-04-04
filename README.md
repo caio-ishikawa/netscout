@@ -90,4 +90,6 @@ The tests are placed in the same directory as the tested file, and the crawler t
 All the setup needed for the tests are handled in the Makefile: 
 - To pull the DVWA image, run ```make test-container-pull```
 - To run the container ```make test-container-run```
+- To setup the test files ```make testfiles-setup```
+- To teardown the test files ```make testfiles-teardown```
 - To run the tests ```make test```
