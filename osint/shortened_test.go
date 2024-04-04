@@ -34,7 +34,7 @@ func TestUnzipAllDownloads(t *testing.T) {
 	comms := shared.NewCommsChannels()
 
 	su := ShortenedUrlFinder{
-		DeletePostDownload: false,
+		DeletePostDownload: true,
 		TargetHost:         "test",
 		ZipFilePath:        "../testfiles/testdir.zip",
 		DestinationPath:    "../testfiles",
@@ -46,11 +46,11 @@ func TestUnzipAllDownloads(t *testing.T) {
 		t.Error(err)
 	}
 
-	if _, err = os.Stat("../testfiles/0test.txt.xz"); err != nil {
-		t.Errorf("unzipped file '0test.txt.xz' does not exist")
+	if _, err = os.Stat("../testfiles/0text1.txt.xz"); err != nil {
+		t.Errorf("unzipped file '0test1.txt.xz' does not exist")
 	}
 
-	if _, err = os.Stat("../testfiles/1test2.txt.xz"); err != nil {
+	if _, err = os.Stat("../testfiles/1text2.txt.xz"); err != nil {
 		t.Errorf("unzipped file '1test2.txt.xz' does not exist")
 	}
 }
@@ -59,7 +59,7 @@ func TestDecompressXZ(t *testing.T) {
 	comms := shared.NewCommsChannels()
 
 	su := ShortenedUrlFinder{
-		DeletePostDownload: false,
+		DeletePostDownload: true,
 		TargetHost:         "test.com",
 		ZipFilePath:        "../testfiles/testdir.zip",
 		DestinationPath:    "../testfiles",
