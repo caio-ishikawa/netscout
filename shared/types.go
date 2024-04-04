@@ -1,48 +1,41 @@
 package shared
 
 import (
+	"fmt"
 	"net/url"
-)
-
-type Relevance string
-
-const (
-	High   Relevance = "HIGH"
-	Medium Relevance = "MEDIUM"
-	Low    Relevance = "LOW"
 )
 
 type Source string
 
 const (
-	Crawler Source = "CRAWLER"
+	Axfr         Source = "DNS_AXFR"
+	Crawler      Source = "CRAWLER"
+	BinaryEdge   Source = "BINARY_EDGE"
+	Serp         Source = "SERP"
+	ShortenedUrl Source = "SHORTENED_URL"
 )
 
 type ScannedItem struct {
-	Url       url.URL
-	Relevance Relevance
-	Source    Source
+	Url    url.URL
+	Source Source
 }
 
-// TODO: check relevance and source values?
-func NewScannedItem(url url.URL, relevance, source string) ScannedItem {
-	return ScannedItem{
-		Url:       url,
-		Relevance: Relevance(relevance),
-		Source:    Source(source),
-	}
+func (si *ScannedItem) Format() string {
+	return fmt.Sprintf("[%s] %s\n", si.Source, si.Url.String())
 }
 
 type CommsChannels struct {
-	DataChan    chan ScannedItem
-	WarningChan chan string
-	DoneChan    chan struct{}
+	DataChan          chan ScannedItem
+	WarningChan       chan string
+	CrawlDoneChan     chan struct{}
+	ShortenedDoneChan chan struct{}
 }
 
 func NewCommsChannels() CommsChannels {
 	return CommsChannels{
-		DataChan:    make(chan ScannedItem),
-		WarningChan: make(chan string),
-		DoneChan:    make(chan struct{}),
+		DataChan:          make(chan ScannedItem),
+		WarningChan:       make(chan string),
+		CrawlDoneChan:     make(chan struct{}),
+		ShortenedDoneChan: make(chan struct{}),
 	}
 }

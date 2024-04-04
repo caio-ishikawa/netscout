@@ -46,7 +46,7 @@ func TestCrawlerAllHosts(t *testing.T) {
 			receivedData++
 		case <-comms.WarningChan:
 			receivedWarning++
-		case <-comms.DoneChan:
+		case <-comms.CrawlDoneChan:
 			if receivedData != expectedData {
 				t.Errorf("crawl expected %v msgs; got %v", expectedData, receivedData)
 				t.Fail()
@@ -99,7 +99,7 @@ func TestCrawlerLockedHost(t *testing.T) {
 			receivedData++
 		case <-comms.WarningChan:
 			receivedWarning++
-		case <-comms.DoneChan:
+		case <-comms.CrawlDoneChan:
 			if receivedData != expectedData {
 				t.Errorf("crawl expected %v msgs; got %v", expectedData, receivedData)
 				t.Fail()
@@ -151,7 +151,7 @@ func TestCrawlerLockedHostHeadless(t *testing.T) {
 			receivedData++
 		case <-comms.WarningChan:
 			receivedWarning++
-		case <-comms.DoneChan:
+		case <-comms.CrawlDoneChan:
 			if receivedData != expectedData {
 				t.Errorf("crawl expected %v msgs; got %v", expectedData, receivedData)
 				t.Fail()
