@@ -185,6 +185,8 @@ func (ns *NetScout) crawl(toCrawl []url.URL, comms shared.CommsChannels) {
 		toCrawl,
 		ns.settings.Depth,
 		comms,
+		ns.settings.Header,
+		ns.settings.Cookie,
 	)
 
 	crawler.Crawl(0)
