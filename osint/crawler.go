@@ -2,7 +2,6 @@ package osint
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -199,7 +198,7 @@ func (crawler *Crawler) getHtmlContentHeadless(url url.URL) (*html.Node, error) 
 // Returns chromedp ActionFunc that sets the cookies per each chrome request
 func (crawler *Crawler) setHeadlessCookie(ctx context.Context, url url.URL) (chromedp.Action, error) {
 	if len(crawler.cookies) == 0 {
-		return nil, nil
+		return chromedp.ActionFunc(func(ctx context.Context) error { return nil }), nil
 	}
 
 	return chromedp.ActionFunc(func(ctx context.Context) error {
@@ -220,6 +219,10 @@ func (crawler *Crawler) setHeadlessCookie(ctx context.Context, url url.URL) (chr
 
 // Returns a chromedp ActionFunc that sets the headers per each chrome request
 func (crawler *Crawler) setHeadlessHeader() chromedp.ActionFunc {
+	if len(crawler.headers) == 0 {
+		return chromedp.ActionFunc(func(ctx context.Context) error { return nil })
+	}
+
 	headers := make(map[string]interface{})
 	for key, val := range crawler.headers {
 		headers[key] = val

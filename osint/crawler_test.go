@@ -31,6 +31,8 @@ func TestCrawlerAllHosts(t *testing.T) {
 		[]url.URL{*seed},
 		depth,
 		comms,
+		map[string]string{},
+		map[string]string{},
 	)
 
 	go crawler.Crawl(0)
@@ -83,6 +85,8 @@ func TestCrawlerLockedHost(t *testing.T) {
 		[]url.URL{*seed},
 		depth,
 		comms,
+		map[string]string{},
+		map[string]string{},
 	)
 
 	go crawler.Crawl(0)
@@ -135,6 +139,8 @@ func TestCrawlerLockedHostHeadless(t *testing.T) {
 		[]url.URL{*seed},
 		depth,
 		comms,
+		map[string]string{},
+		map[string]string{},
 	)
 
 	go crawler.Crawl(0)
