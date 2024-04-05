@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/caio-ishikawa/netscout/shared"
+	"github.com/chromedp/cdproto/cdp"
+	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
 	"golang.org/x/net/html"
 )
@@ -26,6 +28,8 @@ type Crawler struct {
 	toCrawl  []url.URL
 	urlMap   map[string]url.URL
 	comms    shared.CommsChannels
+	cookies  map[string]string
+	headers  map[string]string
 }
 
 func NewCrawler(
@@ -37,6 +41,8 @@ func NewCrawler(
 	toCrawl []url.URL,
 	maxDepth int,
 	comms shared.CommsChannels,
+	headers map[string]string,
+	cookies map[string]string,
 ) Crawler {
 	return Crawler{
 		mutex:    sync.Mutex{},
@@ -49,6 +55,8 @@ func NewCrawler(
 		toCrawl:  toCrawl,
 		urlMap:   map[string]url.URL{},
 		comms:    comms,
+		cookies:  cookies,
+		headers:  headers,
 	}
 }
 
@@ -124,6 +132,20 @@ func (crawler *Crawler) getHtmlContent(url url.URL) (*html.Node, error) {
 		return nil, err
 	}
 
+	if len(crawler.headers) > 0 {
+		for key, value := range crawler.headers {
+			req.Header.Add(key, value)
+		}
+	}
+
+	if len(crawler.cookies) > 0 {
+		for key, value := range crawler.cookies {
+			expiration := time.Now().Add(365 * 24 * time.Hour)
+			cookie := http.Cookie{Name: key, Value: value, Expires: expiration}
+			req.AddCookie(&cookie)
+		}
+	}
+
 	client := http.DefaultClient
 	resp, err := client.Do(req)
 	if err != nil {
@@ -146,8 +168,18 @@ func (crawler *Crawler) getHtmlContentHeadless(url url.URL) (*html.Node, error) 
 	ctx, cancel := chromedp.NewContext(context.Background())
 	defer cancel()
 
+	network.Enable()
+
+	// the ActionFunc is nil if the cookie hashmap is empty
+	setCookiesFunc, err := crawler.setHeadlessCookie(ctx, url)
+	if err != nil {
+		return nil, err
+	}
+
 	var content string
 	if err := chromedp.Run(ctx,
+		setCookiesFunc,
+		crawler.setHeadlessHeader(),
 		chromedp.Navigate(url.String()),
 		chromedp.WaitVisible("html", chromedp.ByQuery),
 		chromedp.OuterHTML("body", &content),
@@ -161,6 +193,44 @@ func (crawler *Crawler) getHtmlContentHeadless(url url.URL) (*html.Node, error) 
 	}
 
 	return c, nil
+}
+
+// Returns chromedp ActionFunc that sets the cookies per each chrome request
+func (crawler *Crawler) setHeadlessCookie(ctx context.Context, url url.URL) (chromedp.Action, error) {
+	if len(crawler.cookies) == 0 {
+		return chromedp.ActionFunc(func(ctx context.Context) error { return nil }), nil
+	}
+
+	return chromedp.ActionFunc(func(ctx context.Context) error {
+		expr := cdp.TimeSinceEpoch(time.Now().Add(180 * 24 * time.Hour))
+
+		for key, val := range crawler.cookies {
+			err := network.SetCookie(key, val).
+				WithDomain(url.Hostname()).
+				WithExpires(&expr).
+				Do(ctx)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}), nil
+}
+
+// Returns a chromedp ActionFunc that sets the headers per each chrome request
+func (crawler *Crawler) setHeadlessHeader() chromedp.ActionFunc {
+	if len(crawler.headers) == 0 {
+		return chromedp.ActionFunc(func(ctx context.Context) error { return nil })
+	}
+
+	headers := make(map[string]interface{})
+	for key, val := range crawler.headers {
+		headers[key] = val
+	}
+
+	return chromedp.ActionFunc(func(ctx context.Context) error {
+		return network.SetExtraHTTPHeaders(headers).Do(ctx)
+	})
 }
 
 // Recursively gets URLs from a page and propagates it
