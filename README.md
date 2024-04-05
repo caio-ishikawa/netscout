@@ -5,7 +5,7 @@ NetScout is an OSINT tool that finds domains, subdomains, directories, endpoints
 It consists of the following components:
 - BinaryEdge client: Gets subdomains
 - DNS: Attempts to perform a DNS zone transfer to extract subdomains
-- Crawler: Gets URLs and directories from the found subdomains + the seed url
+- Crawler: Gets URLs and directories from the seed URL
 - SERP client: Gets links for files. It uses Google dorking techniques to search for specific file types based on file extensions found by the crawler
 - Shortened URL scan: This module leverages the URLTeam's [lists of shortened URLs](https://archive.org/details/UrlteamWebCrawls). It downloads the list that was last uploaded, and checks every entry for a host that matches the seed URL's host. These text files can be very large (>500mb), and this scan takes several minutes. This module was heavily inspired by [urlhunter](https://github.com/utkusen/urlhunter). 
 
