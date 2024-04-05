@@ -5,11 +5,15 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strings"
 )
 
 // Errors
 const (
-	invalidUrlError = "provided URL is not valid"
+	invalidUrlError     = "provided URL is not valid"
+	invalidKeyValuePair = "provided key-value pair is not valid"
+	invalidCookieStr    = "provided cookie string is not valid"
+	invalidHeaderStr    = "provided header string is not valid"
 )
 
 type Settings struct {
@@ -21,6 +25,8 @@ type Settings struct {
 	ReqDelay         int
 	Output           string
 	Verbose          bool
+	Cookie           map[string]string
+	Header           map[string]string
 	BinaryEdgeApiKey string
 	SerpApiKey       string
 	SkipBinaryEdge   bool
@@ -38,6 +44,8 @@ func ParseFlags() (Settings, error) {
 	reqDelayPtr := flag.Int("delay-ms", 0, "An integer representing the delay between requests in miliseconds")
 	outputPtr := flag.String("o", "", "A string representing the name of the output file")
 	verbosePtr := flag.Bool("v", false, "A boolean - if set, it will display all found URLs")
+	cookiePtr := flag.String("c", "", "A string representing request cookies")
+	headerPtr := flag.String("h", "", "A string representing request header")
 
 	skipBinaryEdgePtr := flag.Bool("skip-binaryedge", false, "A bool - if set, it will skip BinaryEdge subdomain scan")
 	skipGoogleDorkPtr := flag.Bool("skip-google-dork", false, "A bool - if set, it will skip the Google filetype scan")
@@ -55,6 +63,28 @@ func ParseFlags() (Settings, error) {
 		return Settings{}, fmt.Errorf(invalidUrlError)
 	}
 
+	// parse cookie string
+	cookieMap := make(map[string]string)
+	if *cookiePtr != "" {
+		cookies, err := parseKeyValueStr(*cookiePtr)
+		if err != nil {
+			return Settings{}, fmt.Errorf(invalidCookieStr)
+		}
+
+		cookieMap = cookies
+	}
+
+	// parse header string
+	headerMap := make(map[string]string)
+	if *headerPtr != "" {
+		headers, err := parseKeyValueStr(*headerPtr)
+		if err != nil {
+			return Settings{}, fmt.Errorf(invalidCookieStr)
+		}
+
+		headerMap = headers
+	}
+
 	// Defaults to empty string
 	binaryEdgeApiKey := os.Getenv("BINARYEDGE_API_KEY")
 	serpApiKey := os.Getenv("SERP_API_KEY")
@@ -68,6 +98,8 @@ func ParseFlags() (Settings, error) {
 		ReqDelay:         *reqDelayPtr,
 		Output:           *outputPtr,
 		Verbose:          *verbosePtr,
+		Cookie:           cookieMap,
+		Header:           headerMap,
 		BinaryEdgeApiKey: binaryEdgeApiKey,
 		SerpApiKey:       serpApiKey,
 		SkipBinaryEdge:   *skipBinaryEdgePtr,
@@ -75,4 +107,21 @@ func ParseFlags() (Settings, error) {
 		SkipAXFR:         *skipAXFRPtr,
 		Deep:             *deepPtr,
 	}, nil
+}
+
+// Parses strings consisting of key-value pairs (e.g. header and cookies)
+func parseKeyValueStr(str string) (map[string]string, error) {
+	output := make(map[string]string)
+
+	pairs := strings.Split(str, ",")
+	for _, pair := range pairs {
+		split := strings.Split(pair, "=")
+		if len(split) != 2 {
+			return output, fmt.Errorf(invalidKeyValuePair)
+		}
+
+		output[split[0]] = split[1]
+	}
+
+	return output, nil
 }
