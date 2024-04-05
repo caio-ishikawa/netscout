@@ -53,8 +53,13 @@ Usage:
         A boolean - if set, it will only save URLs with the same host as the seed
   -o string
         A string representing the name of the output file
+  -h string
+        A comma-separated key-value string representing request headers
+  -c string
+        A comma-separated key-value string representing the cookies
   -v
         A boolean - if set, it will display all found URLs
+
 
   -skip-axfr
         A bool - if set, it will skip the DNS zone transfer attempt
@@ -82,6 +87,11 @@ Sets thread count to 5, req delay to 1000ms, and forces requests to be made thro
 ```sh
 netscout -u https://crawler-test.com -d 2 -t 5 --delay-ms 1000 --headless -o netscout.txt
 ```
+
+Sets depth to 2, and adds cookies and header values
+```sh
+netscout -u https://crawler-test.com --deep -d 2 -t 5 -h "key=test,key_two=test_2" -c "key=test,key_two=test_2"
+
 
 Enables the shortened URL scan, sets crawler depth to 2, and threads to 5
 ```sh
