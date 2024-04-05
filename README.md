@@ -91,6 +91,7 @@ netscout -u https://crawler-test.com -d 2 -t 5 --delay-ms 1000 --headless -o net
 Sets depth to 2, and adds cookies and header values
 ```sh
 netscout -u https://crawler-test.com --deep -d 2 -t 5 -h "key=test,key_two=test_2" -c "key=test,key_two=test_2"
+```
 
 
 Enables the shortened URL scan, sets crawler depth to 2, and threads to 5
